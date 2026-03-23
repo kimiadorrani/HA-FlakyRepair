@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="420" viewBox="0 0 1400 420">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 8 4 L 0 8 z" fill="#666"/>
+    </marker>
+    <style>
+      .title { font: 700 24px Arial, sans-serif; fill: #222; }
+      .label { font: 700 17px Arial, sans-serif; fill: #222; text-anchor: middle; dominant-baseline: middle; }
+      .small { font: 500 13px Arial, sans-serif; fill: #555; text-anchor: middle; }
+      .note { font: 600 16px Arial, sans-serif; fill: #333; }
+      .edge { stroke: #666; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .edge-soft { stroke: #888; stroke-width: 1.8; fill: none; marker-end: url(#arrow); }
+      .box { rx: 16; ry: 16; stroke-width: 2.2; }
+    </style>
+  </defs>
+
+  <text x="700" y="34" class="title" text-anchor="middle">HA-FlakyRepair Architecture Workflow</text>
+
+  <text x="70" y="118" class="note">Input: flaky test instance</text>
+
+  <rect x="110" y="150" width="185" height="80" class="box" fill="#d9ead3" stroke="#5b7f57"/>
+  <text x="202" y="180" class="label">Orchestrator</text>
+  <text x="202" y="205" class="small">controller</text>
+
+  <rect x="355" y="150" width="185" height="80" class="box" fill="#cfe2f3" stroke="#4f81a7"/>
+  <text x="447" y="180" class="label">Detection Agent</text>
+  <text x="447" y="205" class="small">classify flaky type</text>
+
+  <rect x="600" y="150" width="200" height="80" class="box" fill="#cfe2f3" stroke="#4f81a7"/>
+  <text x="700" y="180" class="label">Context Explorer</text>
+  <text x="700" y="205" class="small">retrieve relevant code</text>
+
+  <rect x="860" y="150" width="185" height="80" class="box" fill="#fff2cc" stroke="#bf9000"/>
+  <text x="952" y="180" class="label">Repair Agent</text>
+  <text x="952" y="205" class="small">use history package</text>
+
+  <rect x="1105" y="150" width="185" height="80" class="box" fill="#fce5cd" stroke="#c27c0e"/>
+  <text x="1197" y="180" class="label">Validation</text>
+  <text x="1197" y="205" class="small">repeat execution</text>
+
+  <rect x="860" y="300" width="185" height="70" class="box" fill="#f4cccc" stroke="#cc0000"/>
+  <text x="952" y="326" class="label">Review Agent</text>
+  <text x="952" y="348" class="small">failure critique</text>
+
+  <ellipse cx="610" cy="335" rx="110" ry="45" fill="#ead1dc" stroke="#a64d79" stroke-width="2.2"/>
+  <text x="610" y="327" class="label">Memory</text>
+  <text x="610" y="348" class="small">trajectory history</text>
+
+  <path d="M180 120 L180 150" class="edge-soft"/>
+  <path d="M295 190 L355 190" class="edge"/>
+  <path d="M540 190 L600 190" class="edge"/>
+  <path d="M800 190 L860 190" class="edge"/>
+  <path d="M1045 190 L1105 190" class="edge"/>
+
+  <path d="M1197 230 L1197 265 L952 265 L952 300" class="edge-soft"/>
+  <text x="1170" y="252" class="small">fail</text>
+
+  <path d="M860 335 L720 335" class="edge-soft"/>
+  <path d="M500 335 L202 335 L202 230" class="edge-soft"/>
+  <text x="316" y="320" class="small">next rotation</text>
+
+  <path d="M1290 190 L1345 190" class="edge-soft"/>
+  <text x="1333" y="178" class="small">pass</text>
+</svg>

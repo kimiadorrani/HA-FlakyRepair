@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1420" height="560" viewBox="0 0 1420 560">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#444"/>
+    </marker>
+    <style>
+      .title { font: 700 26px Arial, sans-serif; fill: #222; }
+      .label { font: 700 18px Arial, sans-serif; fill: #222; text-anchor: middle; dominant-baseline: middle; }
+      .small { font: 500 14px Arial, sans-serif; fill: #444; text-anchor: middle; }
+      .edge { stroke: #444; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+      .box { rx: 16; ry: 16; stroke-width: 2.5; }
+    </style>
+  </defs>
+
+  <text x="710" y="38" class="title" text-anchor="middle">IDoFT to HA-FlakyRepair Workflow</text>
+
+  <rect x="30" y="215" width="250" height="90" class="box" fill="#f4efe6" stroke="#8a6f4d"/>
+  <text x="155" y="246" class="label">IDoFT Dataset</text>
+  <text x="155" y="272" class="small">pr-data.csv / gr-data.csv / py-data.csv</text>
+
+  <rect x="345" y="215" width="220" height="90" class="box" fill="#d9ead3" stroke="#5b7f57"/>
+  <text x="455" y="246" class="label">Task Normalizer</text>
+  <text x="455" y="272" class="small">row to repair task</text>
+
+  <rect x="630" y="215" width="220" height="90" class="box" fill="#cfe2f3" stroke="#4f81a7"/>
+  <text x="740" y="246" class="label">Repository Setup</text>
+  <text x="740" y="272" class="small">clone + checkout SHA</text>
+
+  <rect x="920" y="215" width="180" height="90" class="box" fill="#ead1dc" stroke="#a64d79"/>
+  <text x="1010" y="246" class="label">Orchestrator</text>
+
+  <rect x="920" y="70" width="180" height="90" class="box" fill="#fff2cc" stroke="#bf9000"/>
+  <text x="1010" y="101" class="label">Detection Prior</text>
+  <text x="1010" y="127" class="small">IDoFT category</text>
+
+  <rect x="1170" y="215" width="210" height="90" class="box" fill="#fce5cd" stroke="#c27c0e"/>
+  <text x="1275" y="246" class="label">Repair Loop</text>
+  <text x="1275" y="272" class="small">context, patch, validate</text>
+
+  <rect x="1170" y="375" width="210" height="90" class="box" fill="#d9ead3" stroke="#5b7f57"/>
+  <text x="1275" y="406" class="label">Benchmark Output</text>
+  <text x="1275" y="432" class="small">repaired / partial / failed</text>
+
+  <path d="M280 260 H345" class="edge"/>
+  <path d="M565 260 H630" class="edge"/>
+  <path d="M850 260 H920" class="edge"/>
+  <path d="M1010 160 V215" class="edge"/>
+  <path d="M1100 260 H1170" class="edge"/>
+  <path d="M1275 305 V375" class="edge"/>
+</svg>

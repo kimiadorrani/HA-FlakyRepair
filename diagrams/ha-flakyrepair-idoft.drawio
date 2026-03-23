@@ -1,0 +1,49 @@
+<mxfile host="app.diagrams.net" modified="2026-03-10T10:05:00Z" agent="Codex" version="24.7.17">
+  <diagram id="ha-flakyrepair-idoft" name="IDoFT Integration">
+    <mxGraphModel dx="1280" dy="720" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="2" value="IDoFT Dataset&#xa;pr-data.csv / gr-data.csv / py-data.csv" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f4efe6;strokeColor=#8a6f4d;fontSize=15;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="210" width="230" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="3" value="Task Normalizer&#xa;row to repair task" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d9ead3;strokeColor=#5b7f57;fontSize=15;" vertex="1" parent="1">
+          <mxGeometry x="330" y="210" width="210" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="4" value="Repository Setup&#xa;clone + checkout SHA" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#cfe2f3;strokeColor=#4f81a7;fontSize=15;" vertex="1" parent="1">
+          <mxGeometry x="610" y="210" width="210" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="5" value="Orchestrator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ead1dc;strokeColor=#a64d79;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="900" y="210" width="170" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="6" value="Detection Prior&#xa;Category from IDoFT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#bf9000;fontSize=15;" vertex="1" parent="1">
+          <mxGeometry x="900" y="80" width="170" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="7" value="Repair Loop&#xa;context, patch, validate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce5cd;strokeColor=#c27c0e;fontSize=15;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="210" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="8" value="Benchmark Output&#xa;repaired / partial / failed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d9ead3;strokeColor=#5b7f57;fontSize=15;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="360" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;" edge="1" parent="1" source="2" target="3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;" edge="1" parent="1" source="3" target="4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;" edge="1" parent="1" source="4" target="5">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;" edge="1" parent="1" source="6" target="5">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;" edge="1" parent="1" source="5" target="7">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeWidth=2;" edge="1" parent="1" source="7" target="8">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
