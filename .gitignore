@@ -13,3 +13,6 @@ venv.bak/
 
 # Project specifics
 .DS_Store
+workspaces/
+results/
+.env

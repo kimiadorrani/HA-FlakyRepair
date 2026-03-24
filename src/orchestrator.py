@@ -1,28 +1,34 @@
+"""
+Orchestrator — LangGraph state machine for HA-FlakyRepair.
+
+Flow: START → run_test_in_docker → detection_agent → END
+"""
+
 from langgraph.graph import StateGraph, START, END
+
 from src.state import RepairState
+from src.tools.docker_runner import run_test_in_docker
 from src.agents.detection import detection_agent_node
+
 
 def build_graph() -> StateGraph:
     """
-    Builds the state machine (LangGraph) for HA-FlakyRepair.
-    This acts as the Orchestrator, managing flow across specialized agents.
+    Builds the LangGraph workflow for HA-FlakyRepair detection phase.
     """
-    # 1. Initialize the Controller (StateGraph) with our Memory Layer (RepairState)
     workflow = StateGraph(RepairState)
-    
-    # 2. Add nodes (The specialized agents)
+
+    # Add nodes
+    workflow.add_node("run_test_in_docker", run_test_in_docker)
     workflow.add_node("detection_agent", detection_agent_node)
-    
-    # Future agents to be added:
+
+    # Future agents:
     # workflow.add_node("context_explorer", context_explorer_node)
     # workflow.add_node("repair_agent", repair_agent_node)
     # workflow.add_node("review_agent", review_agent_node)
-    # workflow.add_node("validator", validator_node)
 
-    # 3. Define edges (The workflow logic)
-    # For Phase 1 (up to Detection), we just start -> detection -> end
-    workflow.add_edge(START, "detection_agent")
+    # Define flow: START → Docker Runner → Detection Agent → END
+    workflow.add_edge(START, "run_test_in_docker")
+    workflow.add_edge("run_test_in_docker", "detection_agent")
     workflow.add_edge("detection_agent", END)
-    
-    # 4. Compile the graph
+
     return workflow.compile()
