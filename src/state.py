@@ -22,6 +22,13 @@ class RepairState(TypedDict):
     failing_log: str | None
     is_flakiness_reproduced: bool
     error_message: str | None
+    pass_count: int
+    fail_count: int
+    outcome_profile: str | None
+    execution_profiles: list[dict[str, Any]]
+    selected_profile: str | None
+    cpu_limit: str | None
+    memory_limit: str | None
 
     # Detection Agent Output (populated by detection_agent node)
     flaky_type: str | None

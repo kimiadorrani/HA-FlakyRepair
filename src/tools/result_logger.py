@@ -43,6 +43,13 @@ class ResultLogger:
             "reproduced": 0,
             "not_reproduced": 0,
             "errors": 0,
+            "outcome_profiles": {
+                "mixed": 0,
+                "always_pass": 0,
+                "always_fail": 0,
+                "execution_error": 0,
+                "unknown": 0,
+            },
             "projects": {}
         }
 
@@ -66,6 +73,10 @@ class ResultLogger:
             "category": state.get("category"),
             "sha_detected": state.get("sha_detected"),
             "is_flakiness_reproduced": state.get("is_flakiness_reproduced", False),
+            "pass_count": state.get("pass_count", 0),
+            "fail_count": state.get("fail_count", 0),
+            "outcome_profile": state.get("outcome_profile"),
+            "execution_profiles": state.get("execution_profiles", []),
             "flaky_type": state.get("flaky_type"),
             "root_cause_analysis": state.get("root_cause_analysis"),
             "error_message": state.get("error_message"),
@@ -93,11 +104,29 @@ class ResultLogger:
         else:
             self._summary["not_reproduced"] += 1
 
+        outcome_profile = state.get("outcome_profile") or "unknown"
+        if outcome_profile not in self._summary["outcome_profiles"]:
+            self._summary["outcome_profiles"][outcome_profile] = 0
+        self._summary["outcome_profiles"][outcome_profile] += 1
+
         if project_name not in self._summary["projects"]:
-            self._summary["projects"][project_name] = {"total": 0, "reproduced": 0}
+            self._summary["projects"][project_name] = {
+                "total": 0,
+                "reproduced": 0,
+                "outcome_profiles": {
+                    "mixed": 0,
+                    "always_pass": 0,
+                    "always_fail": 0,
+                    "execution_error": 0,
+                    "unknown": 0,
+                },
+            }
         self._summary["projects"][project_name]["total"] += 1
         if state.get("is_flakiness_reproduced"):
             self._summary["projects"][project_name]["reproduced"] += 1
+        if outcome_profile not in self._summary["projects"][project_name]["outcome_profiles"]:
+            self._summary["projects"][project_name]["outcome_profiles"][outcome_profile] = 0
+        self._summary["projects"][project_name]["outcome_profiles"][outcome_profile] += 1
 
     def write_summary(self) -> None:
         """Write the aggregated summary file."""

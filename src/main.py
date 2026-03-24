@@ -68,11 +68,13 @@ def get_available_workspaces() -> set[str]:
 
 def load_dataset(
     available_projects: set[str],
+    data_file: str = DATA_FILE,
     project_filter: str | None = None,
     test_filter: str | None = None,
     category_filter: str | None = None,
     limit: int | None = None,
     include_od: bool = False,
+    include_not_reproduced: bool = False,
 ) -> list[dict]:
     """
     Read py-data.csv and return rows filtered by:
@@ -82,6 +84,8 @@ def load_dataset(
     - Optional: --category (exact category, e.g. NIO, NOD, OD)
     - Optional: --limit  (max number of tests to return)
     - By default, OD/OD-Vic/OD-Brit tests are SKIPPED (use --include-od to enable)
+    - If the CSV has preprocessing columns, non-reproduced rows are skipped by default
+      (use --include-not-reproduced to include them)
 
     Why skip OD by default:
       Reproducing OD flakiness requires running the full test suite in random order,
@@ -89,7 +93,7 @@ def load_dataset(
       telling the model the answer. NIO and NOD can be reproduced category-agnostically.
     """
     tests = []
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
+    with open(data_file, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
             url = row.get("Project URL", "").strip()
@@ -112,6 +116,14 @@ def load_dataset(
             if not test_name or not category:
                 continue
 
+            reproduced_value = row.get("Reproduced", "").strip().lower()
+            if (
+                not include_not_reproduced
+                and reproduced_value
+                and reproduced_value != "true"
+            ):
+                continue
+
             # ── Apply optional filters ──
             if project_filter and project_name.lower() != project_filter.lower():
                 continue
@@ -130,6 +142,9 @@ def load_dataset(
                 "sha_detected": row.get("SHA Detected", "").strip(),
                 "test_name": test_name,
                 "category": category,
+                "selected_profile": row.get("Selected Profile", "").strip() or None,
+                "cpu_limit": row.get("CPU Limit", "").strip() or None,
+                "memory_limit": row.get("Memory Limit", "").strip() or None,
             })
 
             if limit and len(tests) >= limit:
@@ -171,6 +186,17 @@ def parse_args() -> argparse.Namespace:
         metavar="N",
         help="Stop after N tests (useful for quick debugging)",
     )
+    parser.add_argument(
+        "--input-csv",
+        default=DATA_FILE,
+        help="Path to the input dataset CSV (default: src/data/py-data.csv)",
+    )
+    parser.add_argument(
+        "--include-not-reproduced",
+        action="store_true",
+        default=False,
+        help="Include rows marked as not reproduced in a preprocessed CSV",
+    )
     return parser.parse_args()
 
 
@@ -193,11 +219,13 @@ def run_detection_pipeline():
     # Load and filter the dataset
     tests = load_dataset(
         available,
+        data_file=args.input_csv,
         project_filter=args.project,
         test_filter=args.test,
         category_filter=args.category,
         limit=args.limit,
         include_od=args.include_od,
+        include_not_reproduced=args.include_not_reproduced,
     )
 
     if not tests:
@@ -243,6 +271,13 @@ def run_detection_pipeline():
             "failing_log": None,
             "is_flakiness_reproduced": False,
             "error_message": None,
+            "pass_count": 0,
+            "fail_count": 0,
+            "outcome_profile": None,
+            "execution_profiles": [],
+            "selected_profile": test_info.get("selected_profile"),
+            "cpu_limit": test_info.get("cpu_limit"),
+            "memory_limit": test_info.get("memory_limit"),
             "flaky_type": None,
             "root_cause_analysis": None,
             "code_context": None,

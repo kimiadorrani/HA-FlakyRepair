@@ -8,6 +8,7 @@ Each test execution happens in a fresh container that is destroyed after use.
 import os
 import subprocess
 import logging
+import re
 from typing import Optional, Tuple
 
 from src.state import RepairState
@@ -21,6 +22,10 @@ WORKSPACE_DIR = os.path.join(
 
 # Track which project images have already been built during this session
 _built_images: set[str] = set()
+
+# Stress profile used only after a baseline run passes every attempt.
+STRESS_CPU_LIMIT = os.getenv("HA_FLAKY_STRESS_CPU_LIMIT", "0.5")
+STRESS_MEMORY_LIMIT = os.getenv("HA_FLAKY_STRESS_MEMORY_LIMIT", "512m")
 
 
 def _image_tag(project_name: str) -> str:
@@ -45,6 +50,28 @@ def _clone_and_checkout(repo_url: str, commit_sha: str, project_dir: str) -> Non
     subprocess.run(["git", "clean", "-fdx"], cwd=project_dir, capture_output=True)
 
 
+def _cleanup_docker_state() -> None:
+    """
+    Remove Docker images, stopped containers, build cache, and volumes so repeated
+    runs do not fill the local disk. This is intentionally aggressive because the
+    workspace uses Docker only for this project.
+    """
+    logger.info("Cleaning Docker state to free disk space before the next run …")
+    subprocess.run(
+        ["docker", "system", "prune", "-af", "--volumes"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    subprocess.run(
+        ["docker", "builder", "prune", "-af"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    _built_images.clear()
+
+
 def _build_project_image(project_name: str, project_dir: str) -> str:
     """
     Build a per-project Docker image with the project's own dependencies
@@ -59,19 +86,18 @@ def _build_project_image(project_name: str, project_dir: str) -> str:
     logger.info("Building Docker image %s for %s …", tag, project_name)
 
     # Create an in-memory Dockerfile tailored to this project.
-    # Pin pytest<8 to stay compatible with the Python 3.8 base image.
-    # Do not pin exceptiongroup here: pytest 7.x will resolve a compatible
-    # version automatically, while the previous "<0.2" constraint pointed to
-    # a non-existent release range on PyPI and broke image builds.
+    # We install project dependencies first and avoid forcing extra pytest
+    # plugins globally, because some older repos pin older pytest versions.
     dockerfile_content = """\
 FROM python:3.8-slim
-RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y git build-essential && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY . /app
 RUN pip install --upgrade pip
-RUN pip install "pytest<8" "pytest-repeat<0.9.4" "pytest-randomly"
-RUN if [ -f requirements.txt ]; then pip install -r requirements.txt || true; fi
-RUN if [ -f setup.py ] || [ -f pyproject.toml ]; then pip install -e . || true; fi
+RUN if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+RUN if [ -f setup.py ] || [ -f pyproject.toml ]; then pip install -e .; fi
+RUN python -c "import pytest" >/dev/null 2>&1 || pip install "pytest<8"
+RUN pip install "pytest-repeat<0.9.4"
 """
 
     # Write a temporary Dockerfile inside the project dir
@@ -104,17 +130,21 @@ def _docker_run(
     image_tag: str,
     container_name: str,
     cmd_list: list[str],
-    timeout: int = 120
+    timeout: int = 120,
+    cpu_limit: Optional[str] = None,
+    memory_limit: Optional[str] = None,
 ) -> subprocess.CompletedProcess:
     """
     Run a command in a fresh, ephemeral container.
     The container auto-removes after execution.
     """
-    full_cmd = [
-        "docker", "run", "--rm",
-        "--name", container_name,
-        image_tag,
-    ] + cmd_list
+    full_cmd = ["docker", "run", "--rm", "--name", container_name]
+    if cpu_limit:
+        full_cmd.extend(["--cpus", cpu_limit])
+    if memory_limit:
+        full_cmd.extend(["--memory", memory_limit])
+    full_cmd.append(image_tag)
+    full_cmd.extend(cmd_list)
 
     return subprocess.run(
         full_cmd,
@@ -125,19 +155,51 @@ def _docker_run(
     )
 
 
+def _extract_pytest_count(log: Optional[str], label: str) -> int:
+    """Best-effort parser for pytest summary counts in captured output."""
+    if not log:
+        return 0
+
+    total = 0
+    for match in re.finditer(rf"(\d+)\s+{label}\b", log):
+        total += int(match.group(1))
+    return total
+
+
+def _derive_outcome_profile(
+    pass_count: int,
+    fail_count: int,
+    error_message: Optional[str] = None,
+) -> str:
+    """Classify the observed execution profile before any LLM analysis."""
+    if error_message:
+        return "execution_error"
+    if pass_count > 0 and fail_count > 0:
+        return "mixed"
+    if pass_count > 0:
+        return "always_pass"
+    if fail_count > 0:
+        return "always_fail"
+    return "unknown"
+
+
 def _execute_test_strategy(
     image_tag: str,
     project_name: str,
     test_name: str,
     category: str,
-    iterations: int = 20
-) -> Tuple[Optional[str], Optional[str]]:
+    iterations: int = 100,
+    cpu_limit: Optional[str] = None,
+    memory_limit: Optional[str] = None,
+) -> Tuple[Optional[str], Optional[str], int, int]:
     """
     Execute the test using a category-specific strategy.
-    Returns (passing_log, failing_log).
+    Returns (passing_log, failing_log, pass_count, fail_count).
     """
     passing_log = None
     failing_log = None
+    pass_count = 0
+    fail_count = 0
     timeout_seconds = 120
 
     container_base = f"flaky_run_{project_name.lower()}"
@@ -150,13 +212,19 @@ def _execute_test_strategy(
             res = _docker_run(
                 image_tag, container_name,
                 ["pytest", f"--count={iterations}", "-v", test_name],
-                timeout=timeout_seconds * 2
+                timeout=timeout_seconds * 2,
+                cpu_limit=cpu_limit,
+                memory_limit=memory_limit,
             )
             if res.returncode == 0:
                 passing_log = res.stdout
+                pass_count = iterations
                 logger.info("NIO multi-run: all passed")
             else:
                 failing_log = res.stdout
+                fail_count = _extract_pytest_count(res.stdout, "failed")
+                if fail_count == 0:
+                    fail_count = 1
                 logger.info("NIO multi-run: failure detected")
                 # Get a clean single-run pass
                 container_name_pass = f"{container_base}_nio_pass"
@@ -164,14 +232,18 @@ def _execute_test_strategy(
                     pass_res = _docker_run(
                         image_tag, container_name_pass,
                         ["pytest", "-v", test_name],
-                        timeout=timeout_seconds
+                        timeout=timeout_seconds,
+                        cpu_limit=cpu_limit,
+                        memory_limit=memory_limit,
                     )
                     if pass_res.returncode == 0:
                         passing_log = pass_res.stdout
+                        pass_count = 1
                 except (subprocess.TimeoutExpired, Exception):
                     pass
         except subprocess.TimeoutExpired:
             failing_log = "Timeout Error: NIO execution exceeded timeout."
+            fail_count = 1
 
     elif "NOD" in category:
         # NOD: run the test many times, each in its own container
@@ -181,14 +253,18 @@ def _execute_test_strategy(
                 res = _docker_run(
                     image_tag, container_name,
                     ["pytest", "-v", test_name],
-                    timeout=timeout_seconds
+                    timeout=timeout_seconds,
+                    cpu_limit=cpu_limit,
+                    memory_limit=memory_limit,
                 )
                 if res.returncode == 0:
                     logger.info("NOD iteration %d: passed", i + 1)
+                    pass_count += 1
                     if not passing_log:
                         passing_log = res.stdout
                 else:
                     logger.info("NOD iteration %d: failed", i + 1)
+                    fail_count += 1
                     if not failing_log:
                         failing_log = res.stdout
 
@@ -197,6 +273,7 @@ def _execute_test_strategy(
                     break
             except subprocess.TimeoutExpired:
                 failing_log = f"Timeout Error on NOD iteration {i + 1}."
+                fail_count += 1
                 break
 
     elif "OD" in category:
@@ -214,14 +291,18 @@ def _execute_test_strategy(
             solo_res = _docker_run(
                 image_tag, solo_container,
                 ["pytest", "-v", "--tb=short", test_name],
-                timeout=timeout_seconds
+                timeout=timeout_seconds,
+                cpu_limit=cpu_limit,
+                memory_limit=memory_limit,
             )
             if solo_res.returncode == 0:
                 passing_log = solo_res.stdout
+                pass_count += 1
                 logger.info("OD solo run: PASSED (good baseline)")
             else:
                 # Test fails even solo — likely a broken environment or wrong SHA
                 failing_log = solo_res.stdout
+                fail_count += 1
                 logger.warning(
                     "OD solo run: FAILED already — test may not be reproducible "
                     "in this Docker environment. Output:\n%s",
@@ -229,6 +310,7 @@ def _execute_test_strategy(
                 )
         except subprocess.TimeoutExpired:
             logger.warning("OD solo run timed out.")
+            fail_count += 1
 
         # Step 2: full-directory shuffled runs to catch ordering failure
         for i in range(iterations):
@@ -236,11 +318,14 @@ def _execute_test_strategy(
             try:
                 res = _docker_run(
                     image_tag, container_name,
-                    ["pytest", "-v", "--tb=short", "-p", "randomly", test_dir],
-                    timeout=timeout_seconds * 3
+                    ["pytest", "-v", "--tb=short", test_dir],
+                    timeout=timeout_seconds * 3,
+                    cpu_limit=cpu_limit,
+                    memory_limit=memory_limit,
                 )
                 if res.returncode == 0:
                     logger.info("OD iteration %d: all passed", i + 1)
+                    pass_count += 1
                     if not passing_log:
                         passing_log = res.stdout
                 else:
@@ -248,6 +333,7 @@ def _execute_test_strategy(
                     test_id = test_name.split("::", 1)[-1] if "::" in test_name else test_name
                     if test_id in (res.stdout or "") and "FAILED" in (res.stdout or ""):
                         logger.info("OD iteration %d: target test FAILED (ordering issue found)", i + 1)
+                        fail_count += 1
                         if not failing_log:
                             failing_log = res.stdout
                     else:
@@ -258,6 +344,7 @@ def _execute_test_strategy(
                     break
             except subprocess.TimeoutExpired:
                 failing_log = "Timeout Error on OD iteration."
+                fail_count += 1
                 break
 
     else:
@@ -268,21 +355,135 @@ def _execute_test_strategy(
                 res = _docker_run(
                     image_tag, container_name,
                     ["pytest", "-v", test_name],
-                    timeout=timeout_seconds
+                    timeout=timeout_seconds,
+                    cpu_limit=cpu_limit,
+                    memory_limit=memory_limit,
                 )
                 if res.returncode == 0:
+                    pass_count += 1
                     if not passing_log:
                         passing_log = res.stdout
                 else:
+                    fail_count += 1
                     if not failing_log:
                         failing_log = res.stdout
                 if passing_log and failing_log:
                     break
             except subprocess.TimeoutExpired:
                 failing_log = f"Timeout Error on generic iteration {i + 1}."
+                fail_count += 1
                 break
 
-    return passing_log, failing_log
+    return passing_log, failing_log, pass_count, fail_count
+
+
+def _run_profiled_test_strategy(
+    image_tag: str,
+    project_name: str,
+    test_name: str,
+    category: str,
+    iterations: int = 100,
+) -> Tuple[Optional[str], Optional[str], int, int, str, list[dict[str, object]]]:
+    """
+    Run the test under a baseline profile first, then fall back to a stressed
+    profile only if the baseline run is always-pass.
+    """
+    profiles = [
+        {"name": "baseline", "cpu_limit": None, "memory_limit": None},
+        {"name": "stress", "cpu_limit": STRESS_CPU_LIMIT, "memory_limit": STRESS_MEMORY_LIMIT},
+    ]
+    attempts: list[dict[str, object]] = []
+
+    final_passing_log = None
+    final_failing_log = None
+    final_pass_count = 0
+    final_fail_count = 0
+    final_outcome_profile = "unknown"
+
+    for profile in profiles:
+        passing_log, failing_log, pass_count, fail_count = _execute_test_strategy(
+            image_tag,
+            project_name,
+            test_name,
+            category,
+            iterations=iterations,
+            cpu_limit=profile["cpu_limit"],
+            memory_limit=profile["memory_limit"],
+        )
+        outcome_profile = _derive_outcome_profile(pass_count, fail_count)
+
+        attempts.append({
+            "name": profile["name"],
+            "cpu_limit": profile["cpu_limit"],
+            "memory_limit": profile["memory_limit"],
+            "pass_count": pass_count,
+            "fail_count": fail_count,
+            "outcome_profile": outcome_profile,
+        })
+
+        final_passing_log = passing_log
+        final_failing_log = failing_log
+        final_pass_count = pass_count
+        final_fail_count = fail_count
+        final_outcome_profile = outcome_profile
+
+        if outcome_profile != "always_pass":
+            break
+
+        logger.info(
+            "Profile %s was always-pass for %s. Escalating to stressed rerun.",
+            profile["name"], test_name
+        )
+
+    return (
+        final_passing_log,
+        final_failing_log,
+        final_pass_count,
+        final_fail_count,
+        final_outcome_profile,
+        attempts,
+    )
+
+
+def _run_selected_profile(
+    image_tag: str,
+    project_name: str,
+    test_name: str,
+    category: str,
+    iterations: int,
+    profile_name: Optional[str],
+    cpu_limit: Optional[str],
+    memory_limit: Optional[str],
+) -> Tuple[Optional[str], Optional[str], int, int, str, list[dict[str, object]]]:
+    """
+    Run the test once with a profile already discovered during preprocessing.
+    """
+    passing_log, failing_log, pass_count, fail_count = _execute_test_strategy(
+        image_tag,
+        project_name,
+        test_name,
+        category,
+        iterations=iterations,
+        cpu_limit=cpu_limit,
+        memory_limit=memory_limit,
+    )
+    outcome_profile = _derive_outcome_profile(pass_count, fail_count)
+    attempts = [{
+        "name": profile_name or "custom",
+        "cpu_limit": cpu_limit,
+        "memory_limit": memory_limit,
+        "pass_count": pass_count,
+        "fail_count": fail_count,
+        "outcome_profile": outcome_profile,
+    }]
+    return (
+        passing_log,
+        failing_log,
+        pass_count,
+        fail_count,
+        outcome_profile,
+        attempts,
+    )
 
 
 # ──────────────────────────────────────────────
@@ -309,9 +510,18 @@ def run_test_in_docker(state: RepairState) -> dict:
     error_message = None
     passing_log = None
     failing_log = None
+    pass_count = 0
+    fail_count = 0
+    execution_profiles: list[dict[str, object]] = []
     is_reproduced = False
+    selected_profile = state.get("selected_profile")
+    cpu_limit = state.get("cpu_limit")
+    memory_limit = state.get("memory_limit")
 
     try:
+        # 0. Free Docker disk space aggressively before rebuilding/rerunning.
+        _cleanup_docker_state()
+
         # 1. Clone & checkout
         _clone_and_checkout(project_url, sha, project_dir)
 
@@ -319,9 +529,42 @@ def run_test_in_docker(state: RepairState) -> dict:
         image_tag = _build_project_image(project_name, project_dir)
 
         # 3. Run category-specific test strategy
-        passing_log, failing_log = _execute_test_strategy(
-            image_tag, project_name, test_name, category
-        )
+        if selected_profile or cpu_limit or memory_limit:
+            logger.info(
+                "Using preselected execution profile for %s: profile=%s cpu=%s memory=%s",
+                test_name,
+                selected_profile or "custom",
+                cpu_limit or "none",
+                memory_limit or "none",
+            )
+            (
+                passing_log,
+                failing_log,
+                pass_count,
+                fail_count,
+                _,
+                execution_profiles,
+            ) = _run_selected_profile(
+                image_tag,
+                project_name,
+                test_name,
+                category,
+                iterations=100,
+                profile_name=selected_profile,
+                cpu_limit=cpu_limit,
+                memory_limit=memory_limit,
+            )
+        else:
+            (
+                passing_log,
+                failing_log,
+                pass_count,
+                fail_count,
+                _,
+                execution_profiles,
+            ) = _run_profiled_test_strategy(
+                image_tag, project_name, test_name, category
+            )
 
         if passing_log and failing_log:
             is_reproduced = True
@@ -333,11 +576,20 @@ def run_test_in_docker(state: RepairState) -> dict:
         error_message = str(e)
         logger.error("Docker runner error: %s", error_message)
 
+    outcome_profile = _derive_outcome_profile(pass_count, fail_count, error_message)
+
     return {
         "passing_log": passing_log,
         "failing_log": failing_log,
         "is_flakiness_reproduced": is_reproduced,
         "error_message": error_message,
+        "pass_count": pass_count,
+        "fail_count": fail_count,
+        "outcome_profile": outcome_profile,
+        "execution_profiles": execution_profiles,
+        "selected_profile": selected_profile,
+        "cpu_limit": cpu_limit,
+        "memory_limit": memory_limit,
         "trajectory": [{
             "agent": "DockerRunner",
             "action": "execute_test_in_docker",
@@ -345,6 +597,10 @@ def run_test_in_docker(state: RepairState) -> dict:
             "test": test_name,
             "category": category,
             "reproduced": is_reproduced,
+            "pass_count": pass_count,
+            "fail_count": fail_count,
+            "outcome_profile": outcome_profile,
+            "execution_profiles": execution_profiles,
             "error": error_message,
         }]
     }

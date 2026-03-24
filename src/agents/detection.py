@@ -31,6 +31,9 @@ def detection_agent_node(state: RepairState) -> dict:
     passing_log = state.get("passing_log")
     failing_log = state.get("failing_log")
     error_message = state.get("error_message")
+    pass_count = state.get("pass_count", 0)
+    fail_count = state.get("fail_count", 0)
+    outcome_profile = state.get("outcome_profile", "unknown")
 
     logger.info("=== Detection Agent: %s ===", test_name)
 
@@ -58,6 +61,9 @@ def detection_agent_node(state: RepairState) -> dict:
             "flaky_type": f"{flaky_type} (not reproduced)",
             "root_cause_analysis": (
                 "Could not reproduce flakiness in Docker. "
+                f"Outcome profile: {outcome_profile}. "
+                f"Pass count: {pass_count}. "
+                f"Fail count: {fail_count}. "
                 f"Dataset category prior: {category_str}. "
                 f"Passing log available: {bool(passing_log)}. "
                 f"Failing log available: {bool(failing_log)}."
@@ -80,26 +86,27 @@ def detection_agent_node(state: RepairState) -> dict:
     )
 
     prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are an expert QA and Python Test automation engineer.
-Your goal is to perform a Root Cause Analysis on a flaky test.
+        ("system", """You are an expert QA and Python test engineer.
+Your goal is to detect the flaky-test behavior shown in the logs.
 
-Flaky Category Meanings:
+Possible flaky categories:
 - NIO (Non-Idempotent-Outcome): Passes when run alone, fails when run multiple times
-  in the same process (forgets to reset state).
-- NOD (Non-Deterministic): Fails randomly depending on execution timing, network, or random seeds.
-- OD (Order-Dependent): Fails only if it runs after or before another specific test.
-- OD-Vic: Order-Dependent Victim (the test that breaks when order changes).
-- OD-Brit: Order-Dependent Brittle (the test that is sensitive to its position).
+  in the same process.
+- NOD (Non-Deterministic): Fails randomly depending on timing, scheduling, network,
+  or randomness.
+- OD (Order-Dependent): Fails only if it runs before or after another specific test.
+- OD-Vic: Order-Dependent Victim.
+- OD-Brit: Order-Dependent Brittle.
 
 Analyze the logs and:
-1. Confirm which flaky category best matches
+1. Identify which flaky category best matches the observed behavior
 2. Identify the exact line of failure
 3. Explain the root cause concisely
-4. Suggest the type of fix needed (1-2 sentences)"""),
+
+Do not suggest a fix. Base your answer only on the observed logs."""),
         ("user", """
 **Repository:** {repo_url}
 **Test Name:** {target_test}
-**Dataset Category:** {category}
 
 --- THE TEST PASSES WITH THIS OUTPUT ---
 {passing_log}
@@ -107,7 +114,7 @@ Analyze the logs and:
 --- THE TEST FLAKES/FAILS WITH THIS OUTPUT ---
 {failing_log}
 
-Analyze the logs according to the category. Identify the exact line of failure and explain the root cause.
+Determine the most likely flaky category from the logs, then identify the failing line and root cause.
 """)
     ])
 
@@ -117,7 +124,6 @@ Analyze the logs according to the category. Identify the exact line of failure a
         response = chain.invoke({
             "repo_url": project_url,
             "target_test": test_name,
-            "category": category_str,
             "passing_log": passing_log or "N/A",
             "failing_log": failing_log or "N/A",
         })
