@@ -24,6 +24,8 @@ class RepairState(TypedDict):
     error_message: str | None
     pass_count: int
     fail_count: int
+    iterations_requested: int
+    iterations_executed: int
     outcome_profile: str | None
     execution_profiles: list[dict[str, Any]]
     selected_profile: str | None

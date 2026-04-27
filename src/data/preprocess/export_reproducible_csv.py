@@ -32,9 +32,12 @@ EXTRA_FIELDS = (
     "Selected Profile",
     "CPU Limit",
     "Memory Limit",
+    "Iterations Requested",
+    "Iterations Executed",
     "Pass Count",
     "Fail Count",
     "Outcome Profile",
+    "Execution Profiles Output",
 )
 
 
@@ -85,6 +88,54 @@ def _fieldnames_from_input(input_csv: Path) -> list[str]:
     return fieldnames
 
 
+def _serialize_execution_profiles(test: dict[str, Any]) -> str:
+    attempts = test.get("execution_profiles") or []
+    if not attempts:
+        return ""
+
+    formatted_attempts: list[str] = []
+    for attempt in attempts:
+        name = str(attempt.get("name") or "unknown")
+        outcome = str(attempt.get("outcome_profile") or "unknown")
+        pass_count = int(attempt.get("pass_count", 0) or 0)
+        fail_count = int(attempt.get("fail_count", 0) or 0)
+
+        details: list[str] = [f"{name}: {outcome}"]
+        if attempt.get("iterations_requested") is not None:
+            details.append(f"requested={int(attempt.get('iterations_requested', 0) or 0)}")
+        if attempt.get("iterations_executed") is not None:
+            details.append(f"executed={int(attempt.get('iterations_executed', 0) or 0)}")
+        details.append(f"pass={pass_count}")
+        details.append(f"fail={fail_count}")
+
+        if attempt.get("cpu_limit"):
+            details.append(f"cpu={attempt['cpu_limit']}")
+        if attempt.get("memory_limit"):
+            details.append(f"memory={attempt['memory_limit']}")
+        if attempt.get("thread_stress"):
+            details.append("thread_stress=true")
+        if attempt.get("python_hash_seed"):
+            details.append(f"python_hash_seed={attempt['python_hash_seed']}")
+
+        formatted_attempts.append(", ".join(details))
+
+    return "\n----\n".join(formatted_attempts)
+
+
+def _compact_error_message(error_message: Any) -> str:
+    raw_error = str(error_message or "")
+    if not raw_error:
+        return ""
+
+    lines = raw_error.splitlines()
+    if len(lines) <= 10:
+        return raw_error
+
+    head = lines[:5]
+    tail = lines[-5:]
+    return "\n".join(head + ["...", "(trimmed)", "..."] + tail)
+
+
 def _selected_profile_from_test(test: dict[str, Any]) -> dict[str, str]:
     attempts = test.get("execution_profiles") or []
     preprocess_status = "reproduced"
@@ -97,13 +148,16 @@ def _selected_profile_from_test(test: dict[str, Any]) -> dict[str, str]:
         return {
             "Preprocess Status": preprocess_status,
             "Reproduced": "true" if test.get("is_flakiness_reproduced") else "false",
-            "Preprocess Error": str(test.get("error_message") or ""),
+            "Preprocess Error": _compact_error_message(test.get("error_message")),
             "Selected Profile": "",
             "CPU Limit": "",
             "Memory Limit": "",
+            "Iterations Requested": str(test.get("iterations_requested", "")),
+            "Iterations Executed": str(test.get("iterations_executed", "")),
             "Pass Count": str(test.get("pass_count", 0)),
             "Fail Count": str(test.get("fail_count", 0)),
             "Outcome Profile": test.get("outcome_profile", "") or "",
+            "Execution Profiles Output": _serialize_execution_profiles(test),
         }
 
     chosen_attempt = None
@@ -117,13 +171,16 @@ def _selected_profile_from_test(test: dict[str, Any]) -> dict[str, str]:
     return {
         "Preprocess Status": preprocess_status,
         "Reproduced": "true" if test.get("is_flakiness_reproduced") else "false",
-        "Preprocess Error": str(test.get("error_message") or ""),
+        "Preprocess Error": _compact_error_message(test.get("error_message")),
         "Selected Profile": str(chosen_attempt.get("name") or ""),
         "CPU Limit": str(chosen_attempt.get("cpu_limit") or ""),
         "Memory Limit": str(chosen_attempt.get("memory_limit") or ""),
+        "Iterations Requested": str(chosen_attempt.get("iterations_requested", "")),
+        "Iterations Executed": str(chosen_attempt.get("iterations_executed", "")),
         "Pass Count": str(chosen_attempt.get("pass_count", test.get("pass_count", 0))),
         "Fail Count": str(chosen_attempt.get("fail_count", test.get("fail_count", 0))),
         "Outcome Profile": str(chosen_attempt.get("outcome_profile") or test.get("outcome_profile") or ""),
+        "Execution Profiles Output": _serialize_execution_profiles(test),
     }
 
 
@@ -190,6 +247,16 @@ def append_processed_row(
     matched_row.update(row_data)
     write_header = not output_csv.exists() or output_csv.stat().st_size == 0
     output_csv.parent.mkdir(parents=True, exist_ok=True)
+
+    # Guard: if file exists and doesn't end with a newline (e.g. after manual
+    # editing), insert one so the new row isn't concatenated to the last line.
+    if not write_header and output_csv.stat().st_size > 0:
+        with output_csv.open("rb") as _f:
+            _f.seek(-1, 2)
+            if _f.read(1) not in (b"\n", b"\r"):
+                with output_csv.open("ab") as _fa:
+                    _fa.write(b"\n")
+
     with output_csv.open("a", encoding="utf-8", newline="") as dst_handle:
         writer = csv.DictWriter(dst_handle, fieldnames=fieldnames)
         if write_header:

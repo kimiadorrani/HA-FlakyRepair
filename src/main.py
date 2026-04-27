@@ -70,6 +70,7 @@ def load_dataset(
     available_projects: set[str],
     data_file: str = DATA_FILE,
     project_filter: str | None = None,
+    skip_projects: set[str] | None = None,
     test_filter: str | None = None,
     category_filter: str | None = None,
     limit: int | None = None,
@@ -80,6 +81,7 @@ def load_dataset(
     Read py-data.csv and return rows filtered by:
     - Repo must exist in workspaces/
     - Optional: --project (exact project name)
+    - Optional: excluded project names
     - Optional: --test   (partial match on test name)
     - Optional: --category (exact category, e.g. NIO, NOD, OD)
     - Optional: --limit  (max number of tests to return)
@@ -93,6 +95,9 @@ def load_dataset(
       telling the model the answer. NIO and NOD can be reproduced category-agnostically.
     """
     tests = []
+    normalized_skip_projects = {
+        project.lower() for project in (skip_projects or set())
+    }
     with open(data_file, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
@@ -104,6 +109,8 @@ def load_dataset(
 
             # Must exist in workspaces/
             if project_name not in available_projects:
+                continue
+            if project_name.lower() in normalized_skip_projects:
                 continue
 
             test_name = row.get(
@@ -273,6 +280,8 @@ def run_detection_pipeline():
             "error_message": None,
             "pass_count": 0,
             "fail_count": 0,
+            "iterations_requested": 0,
+            "iterations_executed": 0,
             "outcome_profile": None,
             "execution_profiles": [],
             "selected_profile": test_info.get("selected_profile"),
