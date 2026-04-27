@@ -1,0 +1,9 @@
+{
+  "expected_repos": 148,
+  "workspace_directories": 145,
+  "valid_repos": 148,
+  "missing_repos": 0,
+  "invalid_repos": 0,
+  "missing_examples": [],
+  "invalid_examples": []
+}

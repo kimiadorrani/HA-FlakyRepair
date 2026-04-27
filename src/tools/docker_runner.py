@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 # Base directory where repos are cloned
 WORKSPACE_DIR = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "..", "..", "workspaces"
+    os.path.dirname(os.path.abspath(__file__)), "..", "..", "workspaces", "idoft"
 )
 
 # Track which project images have already been built during this session

@@ -1,0 +1,17 @@
+{
+  "session_id": "2026-03-25_23-09-33",
+  "input_csv": "/Users/admin/Desktop/POLITO/Thesis/ HA-FlakyRepair/datasets/idoft/raw/py-data.csv",
+  "output_csv": "/Users/admin/Desktop/POLITO/Thesis/ HA-FlakyRepair/datasets/idoft/preprocessed/py-data-reproducible.csv",
+  "total_candidate_tests": 376,
+  "pending_tests_processed": 148,
+  "non_od_repos_in_source": 180,
+  "already_present_repos": 176,
+  "missing_repos_before_clone": 4,
+  "cloned_repos": 0,
+  "failed_repo_clones": 4,
+  "already_exported_rows_before_run": 228,
+  "rows_appended_this_run": 148,
+  "reproduced_rows_appended_this_run": 44,
+  "recorded_rows_total": 376,
+  "reproduced_rows_seen_in_session": 44
+}

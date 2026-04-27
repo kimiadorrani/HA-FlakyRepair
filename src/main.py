@@ -2,11 +2,11 @@
 HA-FlakyRepair — Main Entry Point.
 
 Reads the IDoFT dataset (py-data.csv), filters for tests whose repos
-exist in the workspaces/ directory, and runs each through the LangGraph
+exist in the workspaces/idoft/ directory, and runs each through the LangGraph
 detection pipeline. Results are saved per-project in timestamped folders.
 
 Usage examples:
-  # Run everything available in workspaces/
+  # Run everything available in workspaces/idoft/
   python -m src.main
 
   # Run only tests from a specific project
@@ -25,7 +25,7 @@ Usage examples:
   python -m src.main --project bottle-neck --category NIO --limit 2
 
 Adding more workspaces:
-  git clone <repo_url> workspaces/<repo_name>
+  git clone <repo_url> workspaces/idoft/<repo_name>
   python -m src.main   # it will be picked up automatically
 """
 
@@ -51,12 +51,12 @@ logger = logging.getLogger(__name__)
 # ── Paths ──
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.join(BASE_DIR, "..")
-DATA_FILE = os.path.join(BASE_DIR, "data", "py-data.csv")
-WORKSPACE_DIR = os.path.join(PROJECT_ROOT, "workspaces")
+DATA_FILE = os.path.join(PROJECT_ROOT, "datasets", "idoft", "raw", "py-data.csv")
+WORKSPACE_DIR = os.path.join(PROJECT_ROOT, "workspaces", "idoft")
 
 
 def get_available_workspaces() -> set[str]:
-    """Return the set of project names cloned in workspaces/."""
+    """Return the set of project names cloned in workspaces/idoft/."""
     if not os.path.isdir(WORKSPACE_DIR):
         return set()
     return {
@@ -79,7 +79,7 @@ def load_dataset(
 ) -> list[dict]:
     """
     Read py-data.csv and return rows filtered by:
-    - Repo must exist in workspaces/
+    - Repo must exist in workspaces/idoft/
     - Optional: --project (exact project name)
     - Optional: excluded project names
     - Optional: --test   (partial match on test name)
@@ -107,7 +107,7 @@ def load_dataset(
 
             project_name = url.rstrip("/").split("/")[-1]
 
-            # Must exist in workspaces/
+            # Must exist in workspaces/idoft/
             if project_name not in available_projects:
                 continue
             if project_name.lower() in normalized_skip_projects:
@@ -196,7 +196,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--input-csv",
         default=DATA_FILE,
-        help="Path to the input dataset CSV (default: src/data/py-data.csv)",
+        help="Path to the input dataset CSV (default: datasets/idoft/raw/py-data.csv)",
     )
     parser.add_argument(
         "--include-not-reproduced",

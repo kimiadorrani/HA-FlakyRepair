@@ -1,0 +1,4 @@
+Repo Key,Clone URL,Failure Reason
+liferay__liferay-portal,https://github.com/liferay/liferay-portal.git,clone_timeout_after_180s
+spinn3r__noxy,https://github.com/spinn3r/noxy.git,clone_timeout_after_180s
+voltdb__voltdb,https://github.com/voltdb/voltdb.git,fatal: repository 'https://github.com/voltdb/voltdb.git/' not found

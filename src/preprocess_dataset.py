@@ -2,13 +2,13 @@
 Preprocess the raw Python flaky-test dataset into a reproducible-only CSV.
 
 Workflow:
-1. Fetch missing non-OD repositories into `workspaces/`
+1. Fetch missing non-OD repositories into `workspaces/idoft/`
 2. Run the reproducibility pipeline on the source CSV
 3. Export only reproduced rows into a clean CSV
 
 Example:
   .venv/bin/python -m src.preprocess_dataset
-  .venv/bin/python -m src.main --input-csv src/data/preprocessed/py-data-reproducible.csv
+  .venv/bin/python -m src.main --input-csv datasets/idoft/preprocessed/py-data-reproducible.csv
 """
 
 from __future__ import annotations
@@ -23,13 +23,13 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from src.data.preprocess.export_reproducible_csv import (
+from src.data.idoft.preprocess.export_reproducible_csv import (
     append_processed_row,
     existing_output_keys,
     processed_row_data_from_state,
     reproduced_rows_from_session,
 )
-from src.data.preprocess.fetch_workspaces import clone_missing_repos, iter_unique_repos
+from src.data.idoft.preprocess.fetch_workspaces import clone_missing_repos, iter_unique_repos
 from src.main import DATA_FILE, PROJECT_ROOT, get_available_workspaces, load_dataset
 from src.orchestrator import build_graph
 from src.tools.docker_runner import reset_docker_environment
@@ -44,7 +44,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-PREPROCESSED_DIR = Path(PROJECT_ROOT) / "src" / "data" / "preprocessed"
+PREPROCESSED_DIR = Path(PROJECT_ROOT) / "datasets" / "idoft" / "preprocessed"
 PREPROCESS_REPORT = PREPROCESSED_DIR / "preprocess-report.json"
 
 
@@ -92,7 +92,7 @@ def preprocess_dataset() -> None:
     missing = [(name, url) for name, url in repos if name not in existing_before]
 
     logger.info("Non-OD repos in source CSV: %d", len(repos))
-    logger.info("Already present in workspaces/: %d", len(repos) - len(missing))
+    logger.info("Already present in workspaces/idoft/: %d", len(repos) - len(missing))
     logger.info("Missing repos to clone: %d", len(missing))
 
     cloned, failed = clone_missing_repos(missing)
