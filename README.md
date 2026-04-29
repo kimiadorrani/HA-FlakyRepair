@@ -26,25 +26,37 @@ pip install -r requirements.txt
 
 ## IDOFT
 
-### 3. Preprocess The Dataset
-The recommended IDOFT workflow is:
-1. start from the raw Python flaky-test dataset in `datasets/idoft/raw/py-data.csv`
-2. fetch any missing non-OD repositories into `workspaces/idoft/`
-3. run the reproducibility pass
-4. export only the reproduced tests into a clean CSV
+### End-to-End
 
-Run the full preprocessing step with:
+If you want the standard IDOFT flow from raw dataset to detection, run:
+
+```bash
+.venv/bin/python -m src.preprocess_dataset
+.venv/bin/python -m src.main --input-csv datasets/idoft/preprocessed/py-data-reproducible.csv
+```
+
+This gives you:
+- a cleaned preprocessing CSV at `datasets/idoft/preprocessed/py-data-reproducible.csv`
+- a preprocessing report at `datasets/idoft/preprocessed/preprocess-report.json`
+- detection results under `results/`
+
+### Step-by-Step
+
+#### 1. Preprocess The Dataset
+
+This step:
+- fetches any missing non-OD repositories into `workspaces/idoft/`
+- runs the reproducibility pass
+- records preprocessing outcome fields back into the cleaned CSV
+
+Run:
 ```bash
 .venv/bin/python -m src.preprocess_dataset
 ```
 
-This writes a clean benchmark CSV to:
+Outputs:
 ```text
 datasets/idoft/preprocessed/py-data-reproducible.csv
-```
-
-It also writes a preprocessing report to:
-```text
 datasets/idoft/preprocessed/preprocess-report.json
 ```
 
@@ -69,18 +81,19 @@ If you want to include rows that preprocessing marked as not reproduced, add:
 
 If a repository already exists in `workspaces/idoft/`, it is skipped and not downloaded again.
 
-### 4. Run Detection On The Clean CSV
+#### 2. Run Detection On The Clean CSV
+
 After preprocessing, run the detection phase on the cleaned dataset:
 ```bash
 .venv/bin/python -m src.main --input-csv datasets/idoft/preprocessed/py-data-reproducible.csv
 ```
 
+#### 3. Optional Variations
+
 You can still run the raw dataset directly if needed:
 ```bash
 .venv/bin/python -m src.main
 ```
-
-### Useful Commands
 
 Fetch missing repositories only:
 ```bash
@@ -122,9 +135,28 @@ Run only the first `N` tests:
 
 ## FLAKYCAT
 
-### 1. Prepare Metadata
-The FLAKYCAT workflow is separate from IDOFT. It is currently focused on Java
-test reproduction for non-order-dependent rows.
+FLAKYCAT is handled separately from IDOFT. It is a Java dataset, and the
+current workflow focuses on reproducing non-order-dependent rows.
+
+### End-to-End
+
+If you want the full FLAKYCAT path in one go, use:
+
+```bash
+.venv/bin/python -m src.data.flakycat.preprocess.export_flakycat_metadata
+PYTHONUNBUFFERED=1 bash ./scripts/flakycat/run_flakycat_full_batch.sh
+```
+
+That flow:
+- exports the working CSV
+- clones missing repos with timeout and pruning enabled
+- runs the non-order-dependent batch
+- deletes each repo workspace after its repository batch finishes
+- writes incremental reproduction results to `datasets/flakycat/flakycat-reproduction-results.csv`
+
+### Step-by-Step
+
+#### 1. Export The Working CSV
 
 Generate the normalized metadata CSV from the raw replication package:
 
@@ -138,37 +170,50 @@ This writes:
 datasets/flakycat/flakycat-java-tests.csv
 ```
 
-### 2. Clone FLAKYCAT Repositories
-Clone the Java repositories used by the normalized CSV into:
+#### 2. Clone Repositories
+
+FLAKYCAT repositories are cloned into:
 
 ```text
 workspaces/flakycat/<owner>__<repo>
 ```
 
-Use:
-
-```bash
-.venv/bin/python -m src.data.flakycat.preprocess.fetch_flakycat_workspaces
-```
-
-If a repo hangs or is gone, use the guarded mode below. It times out each clone,
-records failures, and removes failed repos from the working CSV after backing it up:
+Use the guarded clone command as the default. It prevents long hangs, records
+clone failures, and removes failed repos from the active working CSV after
+creating a backup:
 
 ```bash
 PYTHONUNBUFFERED=1 .venv/bin/python -m src.data.flakycat.preprocess.fetch_flakycat_workspaces --clone-timeout 180 --prune-failed-from-csv
 ```
 
-### 3. Run One FLAKYCAT Test
+This also writes:
+
+```text
+datasets/flakycat/flakycat-clone-failures.csv
+datasets/flakycat/flakycat-java-tests.csv.bak
+```
+
+#### 3. Verify Workspaces
+
+After cloning, verify that every repo referenced by the active CSV is a real
+git checkout:
+
+```bash
+.venv/bin/python scripts/flakycat/verify_flakycat_workspaces.py
+```
+
+If you ever need to prune missing or invalid repos from the active CSV later:
+
+```bash
+.venv/bin/python scripts/flakycat/verify_flakycat_workspaces.py --prune-invalid-from-csv
+```
+
+#### 4. Run Reproduction
+
 Run one non-order-dependent Java test repeatedly:
 
 ```bash
 .venv/bin/python scripts/flakycat/run_flakycat_java_test.py --project fastjson --test Issue1492 --iterations 100
-```
-
-By default this runner excludes order-dependent rows. To include them:
-
-```bash
-.venv/bin/python scripts/flakycat/run_flakycat_java_test.py --project dubbo --include-order-dependent --iterations 100
 ```
 
 Per-test results are written to:
@@ -177,49 +222,47 @@ Per-test results are written to:
 results/flakycat/*.json
 ```
 
-### 4. Verify FLAKYCAT Workspaces
-Audit the active FLAKYCAT CSV against `workspaces/flakycat/` and confirm that
-each expected repo is a real git checkout:
-
-```bash
-.venv/bin/python scripts/flakycat/verify_flakycat_workspaces.py
-```
-
-If you want to remove missing or invalid repos from the working CSV after
-backing it up:
-
-```bash
-.venv/bin/python scripts/flakycat/verify_flakycat_workspaces.py --prune-invalid-from-csv
-```
-
-### 5. Run The FLAKYCAT Batch
-Run the full non-order-dependent batch in the foreground:
-
-```bash
-PYTHONUNBUFFERED=1 bash ./scripts/flakycat/run_flakycat_full_batch.sh
-```
-
-That command:
-1. clones any missing FLAKYCAT repositories
-2. runs the non-order-dependent rows
-3. executes each selected row `100` times
-4. records incremental results in:
-
-```text
-datasets/flakycat/flakycat-reproduction-results.csv
-```
-
-If you already cloned the repos and only want the batch step:
+Run the full non-order-dependent batch:
 
 ```bash
 PYTHONUNBUFFERED=1 .venv/bin/python scripts/flakycat/run_flakycat_batch.py --iterations 100
 ```
 
-### Notes
-- FLAKYCAT is a Java dataset, not a pytest/Python dataset.
-- The current reproduction path uses Docker to run Maven or Gradle where possible.
+That writes incremental results to:
+
+```text
+datasets/flakycat/flakycat-reproduction-results.csv
+```
+
+By default, the batch runner deletes each repo workspace after its repository
+batch finishes.
+
+If you want one command that performs guarded cloning first and then runs the
+batch:
+
+```bash
+PYTHONUNBUFFERED=1 bash ./scripts/flakycat/run_flakycat_full_batch.sh
+```
+
+#### 5. Long-Run Mode
+
+The FLAKYCAT batch runner processes rows repository-by-repository. That lets us
+reuse the same repo workspace for all selected rows of that project before
+moving on.
+
+If you want to keep repo workspaces after the batch for debugging:
+
+```bash
+PYTHONUNBUFFERED=1 .venv/bin/python scripts/flakycat/run_flakycat_batch.py --iterations 100 --keep-workspace
+```
+
+### Filters And Defaults
+
 - Non-order-dependent rows are the default focus.
-- Many older Java projects may still fail for environmental reasons such as dead repositories, blocked old HTTP artifact sources, or missing legacy dependencies.
+- Repo workspaces are deleted after each repository batch by default.
+- Order-dependent rows are skipped unless you explicitly add `--include-order-dependent`.
+- The current Java reproduction path uses Docker to run Maven or Gradle where possible.
+- Some older Java projects may still fail for environmental reasons such as dead repositories, blocked old HTTP artifact sources, or missing legacy dependencies.
 
 ## Documentation
 - Main Architecture overview: `docs/Architecture.md`

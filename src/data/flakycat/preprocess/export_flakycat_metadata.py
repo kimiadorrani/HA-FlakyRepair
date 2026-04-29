@@ -177,6 +177,19 @@ def checkout_sha(commit_sha: str, parent_sha: str) -> str:
 
 def rows_from_sheets(sheets: dict[str, list[list[str]]], raw_dir: Path) -> Iterable[dict[str, str]]:
     snippets = snippet_lookup(raw_dir)
+    
+    # Pre-scan for project URLs to help sheets like "Luo et al," which lack them
+    project_urls: dict[str, str] = {}
+    for rows in sheets.values():
+        if not rows: continue
+        header = [v.strip().lower() for v in rows[0]]
+        for row in rows[1:]:
+            data = {header[i]: row[i] if i < len(row) else "" for i in range(len(header))}
+            p = data.get("project", "") or data.get("repository/project", "") or data.get("name", "") or data.get("project name", "")
+            u = data.get("url issue", "") or data.get("github url", "") or data.get("pr link", "") or data.get("commit link", "")
+            repo_url = github_repo_url(u) if u else ""
+            if p and repo_url:
+                project_urls[p.strip().lower()] = repo_url
 
     for sheet_name, rows in sheets.items():
         if not rows:
@@ -224,6 +237,13 @@ def rows_from_sheets(sheets: dict[str, list[list[str]]], raw_dir: Path) -> Itera
                     test_file = ""
                 category = data.get("category", "")
                 issue_url = data.get("commit link", "")
+            elif sheet_name == "Luo et al,":
+                project = data.get("project name", "")
+                commit_sha = data.get("revision", "")
+                test_method = data.get("method name", "")
+                category = data.get("root cause category", "")
+                # Lookup URL from other sheets
+                project_url = project_urls.get(project.strip().lower(), "")
             else:
                 continue
 

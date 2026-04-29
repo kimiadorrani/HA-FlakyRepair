@@ -15,9 +15,12 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
+import re
 import shutil
 import subprocess
 import sys
+import threading
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -31,6 +34,8 @@ DEFAULT_MAVEN_IMAGE = "maven:3.9-eclipse-temurin-8"
 DEFAULT_GRADLE_IMAGE = "gradle:8.5-jdk8"
 DEFAULT_JAVA_IMAGE = "eclipse-temurin:8-jdk"
 _JAVA_CHECK: bool | None = None
+_ACTIVE_DOCKER_CONTAINERS: dict[tuple[str, str, str], str] = {}
+_DOCKER_LOCK = threading.Lock()
 
 
 def parse_args() -> argparse.Namespace:
@@ -138,10 +143,91 @@ def prepare_repo(row: dict[str, str], workspaces_dir: Path, checkout_mode: str) 
     if not checkout:
         raise SystemExit("Selected row has no checkout SHA.")
 
+    # Remove stale locks
+    for lock in [".git/index.lock", ".git/HEAD.lock"]:
+        lock_path = repo_dir / lock
+        if lock_path.exists():
+            print(f"Removing stale git lock: {lock_path}")
+            lock_path.unlink(missing_ok=True)
+
     subprocess.run(["git", "fetch", "--all"], cwd=repo_dir, check=False, capture_output=True, text=True)
     subprocess.run(["git", "checkout", "-f", checkout], cwd=repo_dir, check=True)
     subprocess.run(["git", "clean", "-fdx"], cwd=repo_dir, check=False, capture_output=True, text=True)
+
+    # Patch build files to fix dead repositories (Bintray/JCenter)
+    patch_build_files(repo_dir)
+
     return repo_dir
+
+
+def patch_build_files(repo_dir: Path) -> None:
+    """Inject repositories and fix common build issues in Gradle/Maven."""
+    # Patch Gradle files
+    for path in repo_dir.rglob("*.gradle"):
+        if not path.is_file(): continue
+        try:
+            content = path.read_text(encoding="utf-8")
+            modified = False
+            
+            # 1. Replace jcenter() with mavenCentral()
+            if "jcenter()" in content and "mavenCentral()" not in content:
+                print(f"Patching {path.name}: replacing jcenter() with mavenCentral()")
+                content = content.replace("jcenter()", "mavenCentral()")
+                modified = True
+            
+            # 2. Add google() and mavenCentral() to repositories
+            if "repositories {" in content:
+                 # Add google() if missing (crucial for Android and modern plugins)
+                 if "google()" not in content:
+                     print(f"Patching {path.name}: adding google() repository")
+                     content = content.replace("repositories {", "repositories {\n        google()")
+                     modified = True
+                 # Ensure mavenCentral() is there
+                 if "mavenCentral()" not in content:
+                     print(f"Patching {path.name}: adding mavenCentral() repository")
+                     content = content.replace("repositories {", "repositories {\n        mavenCentral()")
+                     modified = True
+            
+            # 3. Comment out strict Java version checks (e.g. in OkHttp)
+            if "throw new IllegalStateException(\"Unexpected Java version" in content:
+                print(f"Patching {path.name}: commenting out strict Java version check")
+                content = content.replace("throw new IllegalStateException(\"Unexpected Java version", "// throw new IllegalStateException(\"Unexpected Java version")
+                modified = True
+
+            if modified:
+                path.write_text(content, encoding="utf-8")
+        except Exception as e:
+            print(f"Failed to patch {path}: {e}")
+
+    # Patch Maven files
+    for path in repo_dir.rglob("pom.xml"):
+        if not path.is_file(): continue
+        try:
+            content = path.read_text(encoding="utf-8")
+            if ("bintray" in content.lower() or "jcenter" in content.lower()) and "mavenCentral" not in content:
+                if "<repositories>" in content:
+                    print(f"Patching {path.name}: adding Maven Central repository")
+                    repo_xml = """<repository>
+            <id>central</id>
+            <name>Maven Central</name>
+            <url>https://repo1.maven.org/maven2</url>
+        </repository>"""
+                    content = content.replace("<repositories>", f"<repositories>\n        {repo_xml}")
+                    path.write_text(content, encoding="utf-8")
+        except Exception as e:
+            print(f"Failed to patch {path}: {e}")
+
+    # Patch Gradle Wrapper (fix old http URLs)
+    for path in repo_dir.rglob("gradle-wrapper.properties"):
+        if not path.is_file(): continue
+        try:
+            content = path.read_text(encoding="utf-8")
+            if "http://services.gradle.org" in content:
+                print(f"Patching {path.name}: upgrading to https for services.gradle.org")
+                content = content.replace("http://services.gradle.org", "https://services.gradle.org")
+                path.write_text(content, encoding="utf-8")
+        except Exception:
+            pass
 
 
 def build_command(row: dict[str, str], repo_dir: Path, runtime: str) -> tuple[list[str], Path, str]:
@@ -169,43 +255,129 @@ def build_command(row: dict[str, str], repo_dir: Path, runtime: str) -> tuple[li
 
     if build_tool == "maven":
         if runtime == "docker":
-            return build_docker_maven_command(work_dir, selector), work_dir, build_tool
+            cmd, _image = build_docker_runtime_command(repo_dir, work_dir, selector, build_tool)
+            return cmd, work_dir, build_tool
         executable = "./mvnw" if (work_dir / "mvnw").exists() else "mvn"
-        return [executable, "-q", f"-Dtest={selector}", "test"], work_dir, build_tool
+        return [executable, "-q", f"-Dtest={selector}", "-DfailIfNoTests=false", "test"], work_dir, build_tool
 
     gradle_test = selector.replace("#", ".")
     if runtime == "docker":
-        return build_docker_gradle_command(work_dir, gradle_test), work_dir, build_tool
+        cmd, _image = build_docker_runtime_command(repo_dir, work_dir, selector, build_tool)
+        return cmd, work_dir, build_tool
     executable = "./gradlew" if (work_dir / "gradlew").exists() else "gradle"
     return [executable, "test", "--tests", gradle_test], work_dir, build_tool
 
 
-def build_docker_maven_command(work_dir: Path, selector: str) -> list[str]:
-    return [
-        "docker", "run", "--rm",
-        "-v", f"{work_dir}:/workspace",
-        "-w", "/workspace",
-        DEFAULT_MAVEN_IMAGE,
-        "mvn", "-q", f"-Dtest={selector}", "test",
-    ]
+def build_docker_maven_command(selector: str) -> list[str]:
+    return ["mvn", "-q", f"-Dtest={selector}", "-DfailIfNoTests=false", "test"]
 
 
 def build_docker_gradle_command(work_dir: Path, selector: str) -> list[str]:
     if (work_dir / "gradlew").exists():
-        return [
-            "docker", "run", "--rm",
-            "-v", f"{work_dir}:/workspace",
-            "-w", "/workspace",
-            DEFAULT_JAVA_IMAGE,
-            "bash", "-lc", f"chmod +x ./gradlew && ./gradlew test --tests '{selector}'",
-        ]
-    return [
-        "docker", "run", "--rm",
-        "-v", f"{work_dir}:/workspace",
-        "-w", "/workspace",
-        DEFAULT_GRADLE_IMAGE,
-        "gradle", "test", "--tests", selector,
-    ]
+        return ["bash", "-lc", f"chmod +x ./gradlew && ./gradlew test --tests '{selector}'"]
+    return ["gradle", "test", "--tests", selector]
+
+
+def _sanitize_container_name(text: str) -> str:
+    return re.sub(r"[^a-z0-9_.-]+", "-", text.lower()).strip("-") or "flakycat"
+
+
+def _docker_container_name(work_dir: Path, image: str) -> str:
+    repo_part = _sanitize_container_name(work_dir.name)
+    image_part = _sanitize_container_name(image.split(":")[0].split("/")[-1])
+    return f"flakycat_{repo_part}_{image_part}"
+
+
+def ensure_persistent_docker_container(base_dir: Path, image: str) -> str:
+    key = (str(base_dir), image, os.getcwd())
+    with _DOCKER_LOCK:
+        cached = _ACTIVE_DOCKER_CONTAINERS.get(key)
+        if cached:
+            return cached
+
+        container_name = _docker_container_name(base_dir, image)
+        # Force remove if exists (e.g. from a previous crashed run)
+        subprocess.run(
+            ["docker", "rm", "-f", container_name],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=False,
+        )
+        result = subprocess.run(
+            [
+                "docker", "run", "-d", "--name", container_name,
+                "-v", f"{base_dir}:/workspace",
+                "-w", "/workspace",
+                image,
+                "tail", "-f", "/dev/null",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise SystemExit(result.stdout.strip() or f"Failed to start Docker container from {image}")
+
+        _ACTIVE_DOCKER_CONTAINERS[key] = container_name
+        return container_name
+
+
+def cleanup_persistent_docker_container(base_dir: Path, image: str) -> None:
+    key = (str(base_dir), image, os.getcwd())
+    with _DOCKER_LOCK:
+        container_name = _ACTIVE_DOCKER_CONTAINERS.pop(key, "")
+        if not container_name:
+            return
+        subprocess.run(
+            ["docker", "rm", "-f", container_name],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=False,
+        )
+
+
+def cleanup_all_for_repo(repo_dir: Path) -> None:
+    repo_dir_str = str(repo_dir)
+    with _DOCKER_LOCK:
+        to_remove = [k for k in _ACTIVE_DOCKER_CONTAINERS.keys() if k[0] == repo_dir_str]
+    for k in to_remove:
+        with _DOCKER_LOCK:
+            container_name = _ACTIVE_DOCKER_CONTAINERS.pop(k, "")
+        if container_name:
+            print(f"Cleaning up Docker container: {container_name}")
+            subprocess.run(
+                ["docker", "rm", "-f", container_name],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                check=False,
+            )
+
+
+def build_docker_runtime_command(repo_dir: Path, work_dir: Path, selector: str, build_tool: str) -> tuple[list[str], str]:
+    if build_tool == "maven":
+        image = DEFAULT_MAVEN_IMAGE
+        inner_cmd = build_docker_maven_command(selector)
+    else:
+        image = DEFAULT_JAVA_IMAGE if (work_dir / "gradlew").exists() else DEFAULT_GRADLE_IMAGE
+        inner_cmd = build_docker_gradle_command(work_dir, selector.replace("#", "."))
+
+    container_name = ensure_persistent_docker_container(repo_dir, image)
+    
+    # Calculate relative path from repo root to module
+    try:
+        rel_path = work_dir.relative_to(repo_dir)
+        if str(rel_path) == ".":
+            return ["docker", "exec", container_name, *inner_cmd], image
+        # Wrap command in a shell to CD into the module
+        shell_cmd = ["bash", "-lc", f"cd {rel_path} && {' '.join(inner_cmd)}"]
+        return ["docker", "exec", container_name, *shell_cmd], image
+    except ValueError:
+        # Fallback if work_dir is not under repo_dir
+        return ["docker", "exec", container_name, *inner_cmd], image
 
 
 def has_working_java() -> bool:
@@ -246,7 +418,54 @@ def resolve_runtime(preferred: str, work_dir: Path, build_tool: str) -> str:
     return "docker"
 
 
-def run_repeated(cmd: list[str], work_dir: Path, iterations: int, dry_run: bool) -> dict[str, object]:
+def classify_nonretryable_failure(log: str) -> str:
+    text = (log or "").lower()
+    if not text:
+        return ""
+
+    docker_markers = (
+        "failed to connect to the docker api",
+        "cannot connect to the docker daemon",
+        "cannot connect to the docker api",
+        "docker.sock",
+        "error during connect",
+        "permission denied while trying to connect to the docker api",
+    )
+    if any(marker in text for marker in docker_markers):
+        return "docker_unavailable"
+
+    dependency_markers = (
+        "dependencyresolutionexception",
+        "pluginresolutionexception",
+        "could not resolve",
+        "could not transfer artifact",
+        "non-resolvable parent pom",
+        "received status code 501 from server",
+        "blocked mirror for repositories",
+    )
+    if any(marker in text for marker in dependency_markers):
+        return "dependency_error"
+
+    runtime_markers = (
+        "unable to locate a java runtime",
+        "required command not found",
+        "command not found",
+        "no such file or directory",
+    )
+    if any(marker in text for marker in runtime_markers):
+        return "runtime_error"
+
+    storage_markers = (
+        "no space left on device",
+        "disk quota exceeded",
+    )
+    if any(marker in text for marker in storage_markers):
+        return "storage_error"
+
+    return ""
+
+
+def run_repeated(cmd: list[str], work_dir: Path, iterations: int, dry_run: bool, row: dict[str, str]) -> dict[str, object]:
     if dry_run:
         return {
             "command": cmd,
@@ -299,7 +518,11 @@ def run_repeated(cmd: list[str], work_dir: Path, iterations: int, dry_run: bool)
             fail_count += 1
             if not first_fail_log:
                 first_fail_log = result.stdout
-        print(f"[{index + 1}/{iterations}] {'PASS' if result.returncode == 0 else 'FAIL'}")
+                terminal_reason = classify_nonretryable_failure(first_fail_log)
+                if terminal_reason:
+                    print(f"[{row.get('Project')}] [{index + 1}/{iterations}] FAIL (non-retryable: {terminal_reason})")
+                    break
+        print(f"[{row.get('Project')}] [{index + 1}/{iterations}] {'PASS' if result.returncode == 0 else 'FAIL'}")
 
     return {
         "command": cmd,
@@ -328,7 +551,12 @@ def execute_row(
     work_dir = repo_dir / module_path if module_path else repo_dir
     build_tool = "maven" if (work_dir / "pom.xml").exists() else "gradle"
     runtime = resolve_runtime(runtime_preference, work_dir, build_tool)
+    cleanup_image = ""
     cmd, work_dir, build_tool = build_command(row, repo_dir, runtime)
+    if runtime == "docker":
+        cleanup_image = DEFAULT_MAVEN_IMAGE if build_tool == "maven" else (
+            DEFAULT_JAVA_IMAGE if (work_dir / "gradlew").exists() else DEFAULT_GRADLE_IMAGE
+        )
 
     print(f"Project: {row.get('Project')}")
     print(f"Category: {row.get('Category')}")
@@ -339,17 +567,21 @@ def execute_row(
     print("Command:")
     print(" ".join(cmd))
 
-    result = run_repeated(cmd, work_dir, iterations, dry_run)
-    result["row"] = row
-    result["runtime"] = runtime
-    result["build_tool"] = build_tool
+    try:
+        result = run_repeated(cmd, work_dir, iterations, dry_run, row)
+        result["row"] = row
+        result["runtime"] = runtime
+        result["build_tool"] = build_tool
 
-    results_dir.mkdir(parents=True, exist_ok=True)
-    output_path = results_dir / f"{row.get('Project', 'unknown')}-{row.get('Test Method', 'test')}.json"
-    with output_path.open("w", encoding="utf-8") as handle:
-        json.dump(result, handle, indent=2)
-    print(f"Wrote result: {output_path}")
-    return result, output_path
+        results_dir.mkdir(parents=True, exist_ok=True)
+        output_path = results_dir / f"{row.get('Project', 'unknown')}-{row.get('Test Method', 'test')}.json"
+        with output_path.open("w", encoding="utf-8") as handle:
+            json.dump(result, handle, indent=2)
+        print(f"Wrote result: {output_path}")
+        return result, output_path
+    finally:
+        if runtime == "docker" and cleanup_image:
+            cleanup_persistent_docker_container(work_dir, cleanup_image)
 
 
 def main() -> int:
@@ -366,6 +598,76 @@ def main() -> int:
         dry_run=args.dry_run,
     )
     return 0 if result.get("dry_run") or result.get("reproduced") else 1
+
+
+def warm_up_repo(
+    row: dict[str, str],
+    workspaces_dir: Path,
+    checkout_mode: str = "auto",
+    runtime_preference: str = "auto",
+) -> None:
+    """Run a pre-build step (compile) for the repository to speed up individual test runs."""
+    try:
+        repo_dir = prepare_repo(row, workspaces_dir, checkout_mode)
+    except SystemExit as e:
+        print(f"Skipping warm-up: {e}")
+        return
+
+    module_path = row.get("Module Path", "").strip()
+    work_dir = repo_dir / module_path if module_path else repo_dir
+
+    if (work_dir / "pom.xml").exists():
+        build_tool = "maven"
+    elif (work_dir / "build.gradle").exists() or (work_dir / "build.gradle.kts").exists():
+        build_tool = "gradle"
+    else:
+        print(f"Skipping warm-up: Could not determine build tool for {work_dir}")
+        return
+
+    runtime = resolve_runtime(runtime_preference, work_dir, build_tool)
+
+    print(f"Warming up project: {row.get('Project')} ({build_tool} on {runtime})")
+    
+    if build_tool == "maven":
+        # -DskipTests to only compile and install dependencies
+        cmd = ["mvn", "compile", "test-compile", "-DskipTests", "-q"]
+        if runtime == "docker":
+            container_name = ensure_persistent_docker_container(repo_dir, DEFAULT_MAVEN_IMAGE)
+            rel_path = work_dir.relative_to(repo_dir)
+            if str(rel_path) != ".":
+                cmd = ["docker", "exec", container_name, "bash", "-lc", f"cd {rel_path} && mvn compile test-compile -DskipTests -q -DfailIfNoTests=false"]
+            else:
+                cmd = ["docker", "exec", container_name, "mvn", "compile", "test-compile", "-DskipTests", "-q", "-DfailIfNoTests=false"]
+        else:
+            executable = "./mvnw" if (work_dir / "mvnw").exists() else "mvn"
+            cmd = [executable, "compile", "test-compile", "-DskipTests", "-q", "-DfailIfNoTests=false"]
+    else:
+        # Gradle: classes and testClasses tasks
+        cmd = ["./gradlew", "classes", "testClasses", "-x", "test"]
+        if runtime == "docker":
+            image = DEFAULT_JAVA_IMAGE if (work_dir / "gradlew").exists() else DEFAULT_GRADLE_IMAGE
+            container_name = ensure_persistent_docker_container(repo_dir, image)
+            rel_path = work_dir.relative_to(repo_dir)
+            if (work_dir / "gradlew").exists():
+                 inner_cmd = "./gradlew classes testClasses -x test"
+            else:
+                 inner_cmd = "gradle classes testClasses -x test"
+            
+            if str(rel_path) != ".":
+                cmd = ["docker", "exec", container_name, "bash", "-lc", f"cd {rel_path} && {inner_cmd}"]
+            else:
+                cmd = ["docker", "exec", container_name, "bash", "-lc", inner_cmd]
+        else:
+            executable = "./gradlew" if (work_dir / "gradlew").exists() else "gradle"
+            cmd = [executable, "classes", "testClasses", "-x", "test"]
+
+    print(f"Executing warm-up command: {' '.join(cmd)}")
+    try:
+        subprocess.run(cmd, cwd=work_dir, check=False, capture_output=True, text=True, timeout=600)
+    except subprocess.TimeoutExpired:
+        print("Warm-up timed out after 10 minutes.")
+    except Exception as e:
+        print(f"Warm-up failed: {e}")
 
 
 if __name__ == "__main__":
