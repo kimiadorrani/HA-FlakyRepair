@@ -48,6 +48,12 @@ def parse_uiflaky_csv(input_path: Path):
                 'Commit SHA': commit,
                 'Test Files': ';'.join(test_files),
                 'Category': row.get('Root Cause Category', 'Unspecified'),
+                'Manifestation': row.get('Manifestation Category', '').strip(),
+                'Root Cause': row.get('Root Cause of Flakiness', '').strip(),
+                'Fix Category': row.get('Fix Category', '').strip(),
+                'How Fixed': row.get('How Fixed in Code', '').strip(),
+                'Test Runner': row.get('Testing Environment/Runner', '').strip(),
+                'PR URL': row.get('Link to Pull Request (if needed)', '').strip(),
                 'Title': title.strip(),
                 'Source URL': url
             })

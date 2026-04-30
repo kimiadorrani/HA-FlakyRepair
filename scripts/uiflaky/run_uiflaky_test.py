@@ -39,7 +39,7 @@ def ensure_persistent_docker_container(base_dir: Path, image: str) -> str:
         result = subprocess.run(
             [
                 "docker", "run", "-d", "--name", container_name,
-                "-v", f"{base_dir}:/workspace",
+                "-v", f"{base_dir.resolve()}:/workspace",
                 "-w", "/workspace",
                 image,
                 "tail", "-f", "/dev/null",
@@ -81,31 +81,52 @@ def cleanup_all_for_repo(repo_dir: Path) -> None:
             print(f"Cleaning up Docker container: {container_name}")
             subprocess.run(["docker", "rm", "-f", container_name], capture_output=True)
 
-def prepare_repo(row: dict, workspaces_dir: Path) -> Path:
+def prepare_repo(row: dict, workspaces_dir: Path) -> tuple[Path, bool]:
     project_name = row['Project']
     repo_dir = workspaces_dir / project_name.replace('/', '__')
     commit_sha = row['Commit SHA']
 
     if not repo_dir.exists():
         raise FileNotFoundError(f"Repository {project_name} not found in {workspaces_dir}")
+    repo_dir = repo_dir.resolve()
 
     # For UI-FLAKY, the commit is the FIX. We want the state BEFORE the fix.
     checkout = f"{commit_sha}^" if commit_sha else "HEAD"
+    checkout_success = False
 
-    # Try to checkout, if fails, try to unshallow/deepen fetch
     if commit_sha:
-        subprocess.run(["git", "fetch", "origin", commit_sha], cwd=repo_dir, capture_output=True)
+        # Step 1: fetch the fix commit itself if missing
+        sha_missing = subprocess.run(
+            ["git", "cat-file", "-e", commit_sha], cwd=repo_dir, capture_output=True
+        ).returncode != 0
+        if sha_missing:
+            subprocess.run(["git", "fetch", "origin", commit_sha], cwd=repo_dir, capture_output=True)
+
+        # Step 2: check if the parent (sha^) is available — fetch just sha + its parent if not
+        parent_missing = subprocess.run(
+            ["git", "cat-file", "-e", f"{commit_sha}^"], cwd=repo_dir, capture_output=True
+        ).returncode != 0
+
+        if parent_missing:
+            print(f"  Fetching {commit_sha[:7]} + parent from origin (depth 2)...")
+            subprocess.run(
+                ["git", "fetch", "origin", "--depth", "2", commit_sha],
+                cwd=repo_dir, capture_output=True
+            )
 
     result = subprocess.run(["git", "checkout", "-f", checkout], cwd=repo_dir, capture_output=True, text=True)
-    if result.returncode != 0:
-        print(f"Checkout {checkout} failed, attempting to deepen fetch...")
-        subprocess.run(["git", "fetch", "--depth", "1000"], cwd=repo_dir, capture_output=True)
-        result = subprocess.run(["git", "checkout", "-f", checkout], cwd=repo_dir, capture_output=True, text=True)
-        if result.returncode != 0:
-            print(f"Warning: Failed to checkout {checkout}, staying on current branch.")
-    
+    if result.returncode == 0:
+        checkout_success = True
+    else:
+        print(f"  Warning: failed to checkout {checkout} — running at current HEAD instead.")
+
+    actual_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo_dir, capture_output=True, text=True
+    ).stdout.strip()
+    print(f"  Checked out: {actual_sha[:12]} (wanted {checkout})")
+
     subprocess.run(["git", "clean", "-fdx"], cwd=repo_dir, capture_output=True)
-    return repo_dir
+    return repo_dir, checkout_success
 
 def detect_node_image(repo_dir: Path) -> str:
     # Check package.json for version hints
@@ -128,9 +149,24 @@ def detect_node_image(repo_dir: Path) -> str:
     
     return "node:12-buster" # Safer default for older flaky datasets
 
-def build_install_command(container_name: str) -> list[str]:
-    # Force Yarn everywhere
+def build_install_command(repo_dir: Path, container_name: str) -> list[str]:
     install_cmd = "yarn install --ignore-engines --non-interactive"
+    try:
+        data = json.loads((repo_dir / "package.json").read_text())
+        scripts = data.get("scripts", {})
+        has_workspaces = bool(data.get("workspaces"))
+        has_lerna = (repo_dir / "lerna.json").exists()
+
+        if has_workspaces or has_lerna:
+            if scripts.get("build"):
+                install_cmd += " && yarn build"
+            elif has_lerna:
+                # Build each workspace package's CJS output (faster than full build)
+                install_cmd += " && npx lerna run build:cjs --ignore-scripts || npx lerna run build || true"
+        elif scripts.get("build"):
+            install_cmd += " && yarn build"
+    except Exception:
+        pass
     return ["docker", "exec", container_name, "bash", "-lc", install_cmd]
 
 def build_test_command(row: dict, repo_dir: Path, container_name: str) -> list[str]:
@@ -138,16 +174,21 @@ def build_test_command(row: dict, repo_dir: Path, container_name: str) -> list[s
     test_files = [tf.strip() for tf in test_files if tf.strip()]
     test_files_str = " ".join(test_files)
     
-    # Wrap in a shell
+    # Prefer local binaries over npx so that project-pinned runner versions
+    # (and their config file format, e.g. mocha's test/mocha.opts) are used.
     inner_cmd = f'''
-if grep -qi "jest" package.json; then
-    npx jest {test_files_str}
-elif grep -qi "mocha" package.json; then
-    npx mocha {test_files_str}
-elif grep -qi "cypress" package.json; then
+export NODE_ENV=test
+export BABEL_ENV=test
+MOCHA_BIN=$([ -f node_modules/.bin/mocha ] && echo node_modules/.bin/mocha || echo npx mocha)
+JEST_BIN=$([ -f node_modules/.bin/jest ] && echo node_modules/.bin/jest || echo npx jest)
+if grep -qi '"jest"' package.json; then
+    $JEST_BIN {test_files_str}
+elif grep -qi '"mocha"' package.json; then
+    $MOCHA_BIN {test_files_str}
+elif grep -qi '"cypress"' package.json; then
     npx cypress run --spec {test_files_str}
-elif grep -qi "karma" package.json; then
-    npx karma start
+elif grep -qi '"karma"' package.json; then
+    node_modules/.bin/karma start 2>/dev/null || npx karma start
 else
     yarn test -- {test_files_str}
 fi
@@ -155,10 +196,10 @@ fi
     return ["docker", "exec", container_name, "bash", "-lc", inner_cmd]
 
 def update_results_csv(row: dict, result: dict):
-    results_csv_path = Path("/Users/admin/Desktop/POLITO/Thesis/ HA-FlakyRepair/datasets/uiflaky/uiflaky-reproduction-results.csv")
+    results_csv_path = Path("datasets/uiflaky/uiflaky-reproduction-results.csv")
     fieldnames = [
-        'Project', 'Project URL', 'Category', 'Commit SHA', 'Checkout SHA', 
-        'Test Files', 'Title', 'Iterations Requested', 'Iterations Executed', 
+        'Project', 'Project URL', 'Category', 'Commit SHA', 'Checkout SHA',
+        'Checkout OK', 'Test Files', 'Title', 'Iterations Requested', 'Iterations Executed',
         'Pass Count', 'Fail Count', 'Reproduced', 'Status', 'Error', 'Result JSON'
     ]
     
@@ -179,6 +220,7 @@ def update_results_csv(row: dict, result: dict):
             'Category': row.get('Category', ''),
             'Commit SHA': row.get('Commit SHA', ''),
             'Checkout SHA': f"{row.get('Commit SHA', '')}^" if row.get('Commit SHA') else 'HEAD',
+            'Checkout OK': str(result.get('checkout_ok', '')).lower(),
             'Test Files': row.get('Test Files', ''),
             'Title': row.get('Title', ''),
             'Iterations Requested': result.get('iterations_requested', ''),
@@ -193,7 +235,7 @@ def update_results_csv(row: dict, result: dict):
         writer.writerow(output_row)
         fcntl.flock(f, fcntl.LOCK_UN)
 
-def run_repeated(cmd: list[str], work_dir: Path, iterations: int, row: dict, results_dir: Path) -> dict:
+def run_repeated(cmd: list[str], work_dir: Path, iterations: int, row: dict, results_dir: Path, checkout_ok: bool = False) -> dict:
     pass_count = 0
     fail_count = 0
     first_pass_log = ""
@@ -231,6 +273,7 @@ def run_repeated(cmd: list[str], work_dir: Path, iterations: int, row: dict, res
         "pass_count": pass_count,
         "fail_count": fail_count,
         "reproduced": pass_count > 0 and fail_count > 0,
+        "checkout_ok": checkout_ok,
         "first_pass_log": first_pass_log,
         "first_fail_log": first_fail_log,
     }
@@ -247,29 +290,30 @@ def run_repeated(cmd: list[str], work_dir: Path, iterations: int, row: dict, res
 
 def execute_row(row_index: int, row: dict, workspaces_dir: Path, results_dir: Path, iterations: int):
     try:
-        repo_dir = prepare_repo(row, workspaces_dir)
+        repo_dir, checkout_ok = prepare_repo(row, workspaces_dir)
         image = detect_node_image(repo_dir)
         container_name = ensure_persistent_docker_container(repo_dir, image)
-        
+
         print(f"[{row['Project']}] Running install...")
-        install_cmd = build_install_command(container_name)
+        install_cmd = build_install_command(repo_dir, container_name)
         subprocess.run(install_cmd, cwd=repo_dir, check=False)
-        
+
         cmd = build_test_command(row, repo_dir, container_name)
-        
+
         print(f"Running UI-FLAKY test for {row['Project']} :: {row['Title']}")
         results_dir.mkdir(parents=True, exist_ok=True)
-        return run_repeated(cmd, repo_dir, iterations, row, results_dir)
-        
+        return run_repeated(cmd, repo_dir, iterations, row, results_dir, checkout_ok=checkout_ok)
+
     except Exception as e:
         print(f"Error executing row: {e}")
         error_result = {
-            "error": str(e), 
-            "fail_count": 0, 
-            "pass_count": 0, 
-            "iterations_executed": 0, 
+            "error": str(e),
+            "fail_count": 0,
+            "pass_count": 0,
+            "iterations_executed": 0,
             "reproduced": False,
-            "iterations_requested": iterations
+            "iterations_requested": iterations,
+            "checkout_ok": False,
         }
         update_results_csv(row, error_result)
         return error_result
@@ -280,9 +324,9 @@ if __name__ == "__main__":
     parser.add_argument("--iterations", type=int, default=10)
     args = parser.parse_args()
 
-    metadata_path = Path("/Users/admin/Desktop/POLITO/Thesis/ HA-FlakyRepair/datasets/uiflaky/preprocessed/uiflaky-metadata.csv")
-    workspaces_dir = Path("/Users/admin/Desktop/POLITO/Thesis/ HA-FlakyRepair/workspaces/uiflaky")
-    results_dir = Path("/Users/admin/Desktop/POLITO/Thesis/ HA-FlakyRepair/results/uiflaky")
+    metadata_path = Path("datasets/uiflaky/preprocessed/uiflaky-metadata.csv")
+    workspaces_dir = Path("workspaces/uiflaky")
+    results_dir = Path("results/uiflaky")
 
     with open(metadata_path, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)

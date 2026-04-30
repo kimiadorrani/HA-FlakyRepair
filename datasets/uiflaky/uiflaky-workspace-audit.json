@@ -1,0 +1,15 @@
+{
+  "expected_repos": 38,
+  "workspace_directories": 40,
+  "valid_repos": 37,
+  "missing_repos": 1,
+  "invalid_repos": 0,
+  "missing_examples": [
+    {
+      "repo_key": "wix__wix-style-react",
+      "repo_url": "https://github.com/wix/wix-style-react",
+      "reason": "missing_workspace_dir"
+    }
+  ],
+  "invalid_examples": []
+}

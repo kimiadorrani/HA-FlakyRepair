@@ -9,7 +9,7 @@ def run_project(project_rows: list, iterations: int):
     # Run the tests for a single project sequentially to avoid Git/Docker clashes
     for row_index, row in project_rows:
         cmd = [
-            "python3", "scripts/uiflaky/run_uiflaky_test.py",
+            ".venv/bin/python", "scripts/uiflaky/run_uiflaky_test.py",
             "--row-index", str(row_index),
             "--iterations", str(iterations)
         ]
@@ -22,7 +22,7 @@ def main():
     parser.add_argument("--limit", type=int, default=None, help="Limit number of tests to run")
     args = parser.parse_args()
 
-    metadata_path = Path("/Users/admin/Desktop/POLITO/Thesis/ HA-FlakyRepair/datasets/uiflaky/preprocessed/uiflaky-metadata.csv")
+    metadata_path = Path("datasets/uiflaky/preprocessed/uiflaky-metadata.csv")
     if not metadata_path.exists():
         print(f"Metadata not found at {metadata_path}")
         return

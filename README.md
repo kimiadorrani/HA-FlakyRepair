@@ -264,6 +264,101 @@ PYTHONUNBUFFERED=1 .venv/bin/python scripts/flakycat/run_flakycat_batch.py --ite
 - The current Java reproduction path uses Docker to run Maven or Gradle where possible.
 - Some older Java projects may still fail for environmental reasons such as dead repositories, blocked old HTTP artifact sources, or missing legacy dependencies.
 
+## UI-FLAKY
+
+UI-FLAKY is a JavaScript/TypeScript dataset from an ICSE 2021 empirical study on UI-based flaky tests.
+The raw dataset is sourced from https://github.com/ui-flaky-test/ui-flaky-test.github.io.
+
+### End-to-End
+
+If you want the full UI-FLAKY path in one go, use:
+
+```bash
+PYTHONUNBUFFERED=1 bash ./scripts/uiflaky/run_uiflaky_full_batch.sh
+```
+
+That flow:
+- exports the working CSV from the raw dataset
+- clones missing repos into `workspaces/uiflaky/`
+- runs the reproduction batch
+- writes incremental reproduction results to `datasets/uiflaky/uiflaky-reproduction-results.csv`
+
+### Step-by-Step
+
+#### 1. Export The Working CSV
+
+Generate the normalized metadata CSV from the raw dataset:
+
+```bash
+.venv/bin/python -m src.data.uiflaky.preprocess.export_uiflaky_metadata
+```
+
+This reads `datasets/uiflaky/raw/repo/dataset.csv` and writes:
+
+```text
+datasets/uiflaky/preprocessed/uiflaky-metadata.csv
+```
+
+#### 2. Clone Repositories
+
+UI-FLAKY repositories are cloned into:
+
+```text
+workspaces/uiflaky/<owner>__<repo>
+```
+
+```bash
+.venv/bin/python -m src.data.uiflaky.preprocess.fetch_uiflaky_workspaces
+```
+
+#### 3. Verify Workspaces
+
+After cloning, verify that every repo referenced by the metadata CSV is a real git checkout:
+
+```bash
+.venv/bin/python scripts/uiflaky/verify_uiflaky_workspaces.py
+```
+
+To prune missing or invalid repos from the metadata CSV:
+
+```bash
+.venv/bin/python scripts/uiflaky/verify_uiflaky_workspaces.py --prune-invalid-from-csv
+```
+
+#### 4. Run Reproduction
+
+Run one test by row index:
+
+```bash
+.venv/bin/python scripts/uiflaky/run_uiflaky_test.py --row-index 0 --iterations 10
+```
+
+Per-test results are written to:
+
+```text
+results/uiflaky/*.json
+```
+
+Run the full batch:
+
+```bash
+PYTHONUNBUFFERED=1 .venv/bin/python scripts/uiflaky/run_uiflaky_batch.py --iterations 20
+```
+
+That writes incremental results to:
+
+```text
+datasets/uiflaky/uiflaky-reproduction-results.csv
+```
+
+### Filters And Defaults
+
+- Tests run inside Docker using a Node.js image auto-detected from `package.json` (defaults to `node:12-buster`).
+- Yarn is installed in the container and used for dependency installation.
+- The runner checks out the commit _before_ the fix commit (`<sha>^`) to reproduce the flaky state.
+- Early exit: a test stops after the first iteration that produces both a PASS and a FAIL.
+- The batch runner groups rows by project and runs each project sequentially to avoid Docker and Git checkout conflicts.
+
 ## Documentation
 - Main Architecture overview: `docs/Architecture.md`
 - Dataset notes: `docs/README_IDoFT.md`
