@@ -129,25 +129,43 @@ def prepare_repo(row: dict, workspaces_dir: Path) -> tuple[Path, bool]:
     return repo_dir, checkout_success
 
 def detect_node_image(repo_dir: Path) -> str:
-    # Check package.json for version hints
+    import re as _re
     package_json = repo_dir / "package.json"
-    if package_json.exists():
+    nvmrc = repo_dir / ".nvmrc"
+    node_version_file = repo_dir / ".node-version"
+
+    raw_version = ""
+    # Prefer explicit version files
+    for vf in [nvmrc, node_version_file]:
+        if vf.exists():
+            raw_version = vf.read_text().strip().lstrip("v")
+            break
+
+    if not raw_version and package_json.exists():
         try:
-            data = json.loads(package_json.read_text())
-            engines = data.get("engines", {})
-            node_version = str(engines.get("node", ""))
-            if "10" in node_version: return "node:10-buster"
-            if "12" in node_version: return "node:12-buster"
-            if "14" in node_version: return "node:14-bullseye"
-        except:
+            engines = json.loads(package_json.read_text()).get("engines", {})
+            raw_version = str(engines.get("node", ""))
+        except Exception:
             pass
-    
-    # Fallback based on commit date or presence of old libraries
-    # If node-sass is present and it's an old repo, Node 10/12 is safer
-    if (repo_dir / "pnpm-lock.yaml").exists() or (repo_dir / "yarn.lock").exists():
-        return "node:16-bullseye" # pnpm/yarn usually handle things better
-    
-    return "node:12-buster" # Safer default for older flaky datasets
+
+    # Extract leading major version number
+    m = _re.search(r"(\d+)", raw_version)
+    major = int(m.group(1)) if m else 0
+
+    if major >= 22: return "node:22-bookworm"
+    if major >= 20: return "node:20-bullseye"
+    if major >= 18: return "node:18-bullseye"
+    if major == 16: return "node:16-bullseye"
+    if major == 14: return "node:14-bullseye"
+    if major == 12: return "node:12-buster"
+    if major == 10: return "node:10-buster"
+
+    # Fallback: newer repos with yarn/pnpm get node:18, older get node:16
+    if (repo_dir / "pnpm-lock.yaml").exists():
+        return "node:18-bullseye"
+    if (repo_dir / "yarn.lock").exists():
+        return "node:16-bullseye"
+    return "node:16-bullseye"
 
 def build_install_command(repo_dir: Path, container_name: str) -> list[str]:
     install_cmd = "yarn install --ignore-engines --non-interactive"
