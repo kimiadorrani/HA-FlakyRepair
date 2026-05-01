@@ -33,9 +33,6 @@ https://github.com/alexrudy/supertunnel,4c64e2fedda3382b809a2c3d01c711ec4961f933
 https://github.com/aluttik/kitsune,43824cccf46f433a71b30a7febc0e3500b831067,tests/test_kitsune.py::test_kitsune_printer_plain,NIO,Unmaintained,,latest commit 2018/11/19
 https://github.com/aluttik/kitsune,43824cccf46f433a71b30a7febc0e3500b831067,tests/test_kitsune.py::test_kitsune_printer_plain tests/test_kitsune.py::test_kitsune_printer_rainbow,,Unmaintained,,pytest --flake-finder --flake-runs=2;latest commit 2018/11/19
 https://github.com/apache/beam,faae168fa34e97475df70b707f4df91c4946c6ca,sdks/python/apache_beam/runners/portability/portable_runner_test.py::PortableRunnerTest::test_assert_that,OD,Accepted,https://github.com/apache/beam/pull/36485,Repo recommend by GPT
-https://github.com/AshtonUPS/Py-MI-PS,e43c2b4df2b59362c147024840bf541bb767ffd7,src/PyMIPS/tests/register_test.py,NIO,Open,https://github.com/AshtonUPS/Py-MI-PS/pull/23,RepoDeleted
-https://github.com/AshtonUPS/Py-MI-PS,2d22327c75bac1b58a4804a61e7a703ecc5ba978,src/PyMIPS/tests/register_test.py::test_setting_to_num,NIO,Opened,https://github.com/AshtonUPS/Py-MI-PS/pull/22,RepoDeleted
-https://github.com/AshtonUPS/Py-MI-PS,2d22327c75bac1b58a4804a61e7a703ecc5ba978,src/PyMIPS/tests/register_test.py::test_setting_to_num,OD-Vic,RepoDeleted,,
 https://github.com/attzonko/mmpy_bot,4faa19a9e04c75af94c45c24dbd0c9d9ecb867d4,tests/unit_tests/test_scheduler.py::test_add_onetime_job_without_trigger_time,OD-Vic,Deleted,,Deleted in commit 8bba73afdd0dc3ce01c8b0599e59aa5688faf281
 https://github.com/attzonko/mmpy_bot,4faa19a9e04c75af94c45c24dbd0c9d9ecb867d4,tests/unit_tests/test_scheduler.py::test_add_onetime_job_with_trigger_time,OD-Vic,Deleted,,Deleted in commit 8bba73afdd0dc3ce01c8b0599e59aa5688faf281
 https://github.com/AuraiProject/freesia,16834c17725edac74eb50fc5ce2ff1db6f3f4840,tests/test_route.py::RouteTestCase::test_url_match,OD-Brit,Unmaintained,,latest commit 2019/04/30
@@ -160,7 +157,6 @@ https://github.com/Cognexa/plcx,2756c0ba78c4c9e572d95ba002708957bc55d4fa,plcx/te
 https://github.com/Cognexa/plcx,2756c0ba78c4c9e572d95ba002708957bc55d4fa,plcx/tests/comm/test_client.py::test_clientx_context[321],OD-Vic,Unmaintained,,latest commit 2021/05/31
 https://github.com/Cognexa/plcx,2756c0ba78c4c9e572d95ba002708957bc55d4fa,plcx/tests/comm/test_client.py::test_clientx_context[hi],OD-Vic,Unmaintained,,latest commit 2021/05/31
 https://github.com/Cognexa/plcx,2756c0ba78c4c9e572d95ba002708957bc55d4fa,plcx/tests/comm/test_client.py::test_clientx_error,OD-Vic,Unmaintained,,latest commit 2021/05/31
-https://github.com/Cognexa/plcx/issues/43,eba01c1b25b263bbb9f0aa3708cba971007c8362,plcx/tests/comm/test_client.py,,,,pytest --randomly-seed=123
 https://github.com/coinbase/coinbase-commerce-python,d306fc562309edb909c8ace501c63327a7635975,tests/api_resources/base/test_create_api_resource.py::TestCreateAPIResource::test_create,OD-Vic,Unmaintained,,latest commit 2021/06/11
 https://github.com/coinbase/coinbase-commerce-python,d306fc562309edb909c8ace501c63327a7635975,tests/api_resources/base/test_list_api_resource.py::TestListAPIResource::test_list,OD-Vic,Unmaintained,,latest commit 2021/06/11
 https://github.com/coinbase/coinbase-commerce-python,d306fc562309edb909c8ace501c63327a7635975,tests/api_resources/test_charge.py::TestCharge::test_list_iter_mapping,OD-Vic,Unmaintained,,latest commit 2021/06/11
@@ -186,7 +182,6 @@ https://github.com/cr0hn/aiotasks,ec485c84db55227c9283319a9c58401e294a06ff,tests
 https://github.com/cr0hn/aiotasks,ec485c84db55227c9283319a9c58401e294a06ff,tests/unittesting/tasks/test_base_async.py::test_build_manager_invalid_prefix,OD-Vic,Unmaintained,,latest commit 2020/05/27
 https://github.com/crazyscientist/osc-tiny,88c33c2c7f73ea26067e1bb4190bab5dc298dd85,osctiny/tests/test_issues.py::TestIssue::test_get,OD-Vic,,,
 https://github.com/crazyscientist/osc-tiny,a1ec7de6633a3067b0d2b3706efcab99e091720f,osctiny/tests/test_issues.py::TestIssue::test_get,,,,pytest --randomly-seed=123
-https://github.com/cronofy/pycronofy/issues/72,eac7d290e3f3638d82c84d1c51a46c10257a6e20,pycronofy/tests/test_client.py::test_refresh,OD,,,pytest --randomly-seed=1234
 https://github.com/crumpstrr33/Utter-More,418cf5f5ef337700bf0897e746eff8bb275e6da6,test/test_utter_more.py::test_ibu_aut,NIO,Opened,https://github.com/crumpstrr33/Utter-More/pull/1,
 https://github.com/crumpstrr33/Utter-More,418cf5f5ef337700bf0897e746eff8bb275e6da6,test/test_utter_more.py::test_saving_utterances[alexa_test-csv-None],OD-Brit,Opened,https://github.com/crumpstrr33/Utter-More/pull/2,
 https://github.com/crumpstrr33/Utter-More,418cf5f5ef337700bf0897e746eff8bb275e6da6,test/test_utter_more.py::test_saving_utterances[csv_test-csv-None],OD-Brit,Opened,https://github.com/crumpstrr33/Utter-More/pull/2,
@@ -229,7 +224,6 @@ https://github.com/DevKeh/redisqueue,feac4dfc30837e0ab1a55a8479443ea74b2793f2,te
 https://github.com/DevKeh/redisqueue,feac4dfc30837e0ab1a55a8479443ea74b2793f2,tests/test_redisqueue.py::test_mock_queue_put_get,OD-Brit,Opened,https://github.com/jkehler/redisqueue/pull/4,
 https://github.com/DevKeh/redisqueue,feac4dfc30837e0ab1a55a8479443ea74b2793f2,tests/test_redisqueue.py::test_mock_queue_unique,OD-Brit,Opened,https://github.com/jkehler/redisqueue/pull/4,
 https://github.com/dgellerup/laminar,74258f6e6cc8b3b4e9eaf7cc522192a353a3b45e,test/test_laminar.py::test_init_my_lam,OD-Vic,Unmaintained,,latest commit 2022/09/23
-https://github.com/dgilland/pydash/issues/170,24ad0e43b51b367d00447c45baa68c9c03ad1a52,tests/test_utilities.py::test_unique_id,OD,,,pytest --randomly-seed=123
 https://github.com/didix21/mdutils,9cc2a5cfc86a052f987feddcee7f37a4349fb8de,tests/test_mdutils.py::TestMdUtils,,,,pytest --flake-finder --flake-runs=2 or pytest --randomly-seed=1234
 https://github.com/didix21/mdutils,2ef859ecc1e4f1a3e24f4150c96f61180bc57ceb,tests/test_mdutils.py::TestMdUtils::test_create_md_file,OD-Vic,Accepted,https://github.com/didix21/mdutils/pull/76,
 https://github.com/didix21/mdutils,2ef859ecc1e4f1a3e24f4150c96f61180bc57ceb,tests/test_mdutils.py::TestMdUtils::test_new_checkbox_checked_list,OD-Vic,Accepted,https://github.com/didix21/mdutils/pull/76,
@@ -333,11 +327,6 @@ https://github.com/ECSHackWeek/impedance.py,d1019c161be9e967ae227117b72acae4351e
 https://github.com/ECSHackWeek/impedance.py,d1019c161be9e967ae227117b72acae4351e198f,impedance/tests/test_circuit_elements.py::test_element_function_names,OD-Vic,,,
 https://github.com/edasi/kool,efe847a05c1a07af5eddeeeb700fdefcb6c9ced9,tests/contrib/quizzes/test_question.py::TestQuestion::test_add_choices,NOD,Opened,https://github.com/edasi/kool/pull/51,
 https://github.com/edasi/kool,efe847a05c1a07af5eddeeeb700fdefcb6c9ced9,tests/db/flatfile/test_database.py::TestFlatFile::test_tables,OD,Opened,https://github.com/edasi/kool/pull/50,
-https://github.com/eillarra/carbonize,efc89b8a9e44f9d64110406ce70929a9671517c7,tests/test_api.py::TestFootprint::test_flight,OD-Vic,Unmaintained,,latest commit 2022/04/12
-https://github.com/eillarra/carbonize,efc89b8a9e44f9d64110406ce70929a9671517c7,tests/test_api.py::TestFootprint::test_flight_two_way,OD-Brit,Unmaintained,,latest commit 2022/04/12
-https://github.com/eillarra/carbonize,891d1d07ca2e9cc48ca5b609da292dce2e574c7e,test_api.py::TestFootprint::test_flight?,OD,Opened,https://github.com/eillarra/carbonize/pull/1,
-https://github.com/eillarra/carbonize,891d1d07ca2e9cc48ca5b609da292dce2e574c7e,test_api.py::TestFootprint::test_flight_two_way?,OD,Opened,https://github.com/eillarra/carbonize/pull/1,
-https://github.com/ElementAI/greensim,f160e8b57d69f6ef469f2e991cc07b7721e08a91,tests/test_sim.py::test_simulator_gc_processes_hanging,OD-Vic,RepoDeleted,,
 https://github.com/EPAENERGYSTAR/epathermostat,98aaf571fe8e15e1a372567776081fd9dae7e872,tests/test_core.py::test_multiple_same_key,NIO,DevelopersDoNotWantFix,https://github.com/EPAENERGYSTAR/epathermostat/pull/33,
 https://github.com/epsagon/epsagon-python,15ab5c9f5c7dda93f546e20aded715f85a1dea3c,tests/test_transports.py::test_httptransport_timeout,UD,RepoArchived,,
 https://github.com/epsagon/epsagon-python,b985d8412848f9a0c98e2f15ae0967a6dba3517f,tests/wrappers/test_python_function.py::test_function_wrapper_function_exception,OD-Vic,RepoArchived,,
@@ -519,7 +508,6 @@ https://github.com/grabbles/grabbit,83ff93df36019eaaee9d4e31f816a518e46cae07,gra
 https://github.com/grabbles/grabbit,83ff93df36019eaaee9d4e31f816a518e46cae07,grabbit/tests/test_core.py::TestLayout::test_unique_and_count[local],NOD,,,
 https://github.com/gradam/lol_api,33ea96f5eeac581737949b733d8af1c4436e94b9,tests/test_daemon.py::TestDaemon::test_different_api_key,NIO,RepoArchived,,
 https://github.com/gradam/lol_api,33ea96f5eeac581737949b733d8af1c4436e94b9,tests/test_daemon.py::TestDaemon::test_short,NIO,RepoArchived,,
-https://github.com/grd349/PBjam/issues/265,0c5591a1b1adeb2b47d078894118be4e39471cdc,pbjam/tests/test_asy_peakbag.py::test_get_modeIDs pbjam/tests/test_asy_peakbag.py::test_get_summary_stats,,,,pytest --randomly-seed=1234
 https://github.com/Gsllchb/DotDot,64c8c5b0523211f243eef5dc6ea7c22dec5383cc,tests/test_dot.py::test_dot,OD,Rejected,https://github.com/Gsllchb/DotDot/pull/1,
 https://github.com/Gsllchb/DotDot,89a6f7a86866de9c348f7e91da57c359c94568db,tests/test_dot.py::test_dot,OD-Vic,Unmaintained,,latest commit 2021/10/31
 https://github.com/Gsllchb/DotDot,64c8c5b0523211f243eef5dc6ea7c22dec5383cc,tests/test_dotdot.py::test_dotdot,OD,Rejected,https://github.com/Gsllchb/DotDot/pull/1,
@@ -601,7 +589,6 @@ https://github.com/hefnawi/json-storage-manager,c7521fc4a576cf23a8c2454106bed6fb
 https://github.com/hefnawi/json-storage-manager,c7521fc4a576cf23a8c2454106bed6fb8c951b8d,tests/test_main.py::test_set_item_fail,OD-Brit,Opened,https://github.com/hefnawi/json-storage-manager/pull/1,
 https://github.com/hefnawi/json-storage-manager,c7521fc4a576cf23a8c2454106bed6fb8c951b8d,tests/test_main.py::test_update_item,OD-Brit,Opened,https://github.com/hefnawi/json-storage-manager/pull/1,
 https://github.com/hefnawi/json-storage-manager,c7521fc4a576cf23a8c2454106bed6fb8c951b8d,tests/test_main.py::test_write_json,OD-Vic,Opened,https://github.com/hefnawi/json-storage-manager/pull/1,
-https://github.com/hgrecco/pint/issues/1412,fb5c5bd876a984c750cb634d814d95d6441c817c,pint/testsuite/test_unit.py::TestRegistryWithDefaultRegistry::test_redefinition pint/testsuite/test_quantity.py::TestOffsetUnitMath::test_multiplication_with_scalar pint/testsuite/test_issues.py::TestIssues::test_issues86b,,,,pytest --flake-finder --flake-runs=2 or pytest --randomly-seed=1234
 https://github.com/holzkohlengrill/SCout,8fd1eca0607b27d6e0c537b2ea1211d23356edff,tests/test_header.py::TestHeaderLogger::testSingleArg,OD-Vic,Unmaintained,,latest commit 2022/01/29
 https://github.com/huashengdun/webssh,51d527fe75a62aed239126a6697749a30baecb30,tests/test_app.py::TestAppBasic::test_app_auth_with_invalid_pubkey_for_user_robey,NOD,,,
 https://github.com/huashengdun/webssh,51d527fe75a62aed239126a6697749a30baecb30,tests/test_app.py::TestAppBasic::test_app_auth_with_pubkey_cannot_be_decoded_by_multipart_form,NOD,,,
@@ -664,7 +651,6 @@ https://github.com/jamesevickery/l293d,c026a9b58769f23d3e999234ba9df30fb021f949,
 https://github.com/JBielan/py_ev,0a2d48235b8ff2268254c151a179a2ece40cbd37,tests/test_py_ev.py::test_reset,OD-Vic,Unmaintained,,latest commit 2019/05/29
 https://github.com/jedie/bootstrap_env,ab68025d8f6b9a17d8feeed83e8aae26e3f28769,bootstrap_env/tests/test_boot.py::BootstrapEnvTestCase::test_setup,NOD,Unmaintained,,latest commit 2019/01/08
 https://github.com/jedie/bootstrap_env,ab68025d8f6b9a17d8feeed83e8aae26e3f28769,bootstrap_env/tests/test_test_utils.py::BootstrapEnvTestCase::test_setup,NOD,Unmaintained,,latest commit 2019/01/08
-https://github.com/jerodg/jgutils,6c8ed6aca37d509af8ce1b57635fad62f1c846b4,jgutils/tests/test_persistentdict.py::TestPersistentDict::test_file_creation2,NOD,RepoDeleted,,
 https://github.com/JGoutin/compilertools,7b898cb6970f5f25c5356b15a2efd0cb2e54d566,tests/test_build.py::tests_patch___new__,OD-Brit,,,
 https://github.com/JGoutin/compilertools,7b898cb6970f5f25c5356b15a2efd0cb2e54d566,tests/test___init__.py::tests_init,OD-Vic,,,
 https://github.com/jmsv/l293d,e29d7397b4cde4d2d466f018279c2df7d2e84cd9,tests/test_l293d.py::L293DTestCase::test_create_motor_with_force_selection tests/test_l293d.py::L293DTestCase::test_motor_can_be_removed tests/test_l293d.py::L293DTestCase::test_pin_numbering_lock tests/test_l293d.py::L293DTestCase::test_pins_string_list,,Unmaintained,,pytest --flake-finder --flake-runs=2;latest commit 2021/06/19
@@ -744,7 +730,6 @@ https://github.com/laike9m/pdir2,ef5e2200074d68e2ca3df4ee441a1b9ea6ca5abc,tests/
 https://github.com/laike9m/pdir2,ef5e2200074d68e2ca3df4ee441a1b9ea6ca5abc,tests/test_user_config.py::test_read_config_from_custom_location,OD-Brit,,,
 https://github.com/laike9m/pdir2,ef5e2200074d68e2ca3df4ee441a1b9ea6ca5abc,tests/test_user_config.py::test_set_env_without_config,OD-Brit,,,
 https://github.com/laike9m/pdir2,ef5e2200074d68e2ca3df4ee441a1b9ea6ca5abc,tests/test_user_config.py::test_uniform_color,OD-Brit,,,
-https://github.com/laike9m/pdir2/issues/58,cc6bfc6c23addc21aef1ef667ddad537f52b0656,tests/test_user_config.py::test_invalid_config_1,,,,pytest --randomly-seed=123
 https://github.com/LeBarbouze/tunacell,837d57e1e6caeddf2e6bcdd2db2986fb456dd605,tunacell/tests/test_experiment.py::test_counts,OD-Vic,Unmaintained,,latest commit 2019/08/10
 https://github.com/LeBarbouze/tunacell,837d57e1e6caeddf2e6bcdd2db2986fb456dd605,tunacell/tests/test_experiment.py::test_experiment_abspath,OD-Vic,Unmaintained,,latest commit 2019/08/10
 https://github.com/LeBarbouze/tunacell,837d57e1e6caeddf2e6bcdd2db2986fb456dd605,tunacell/tests/test_experiment.py::test_experiment_attributes,OD-Vic,Unmaintained,,latest commit 2019/08/10
@@ -776,7 +761,6 @@ https://github.com/lonly7star/icloud_photos_downloader,999c804a02c6db420aeb51770
 https://github.com/lrowe/pytest_exact_fixtures,b72bf9d7661c65e1535e5fbbddc343fd6120e15c,test_exact_fixtures.py::test_alternative1,OD-Vic,Unmaintained,,latest commit 2019/02/04
 https://github.com/lrowe/pytest_exact_fixtures,b72bf9d7661c65e1535e5fbbddc343fd6120e15c,test_exact_fixtures.py::test_alternative2,OD-Vic,Unmaintained,,latest commit 2019/02/04
 https://github.com/maboualidev/PyJsonFriendly,8b1ee498bc7a27024851b5101bf09913031e2477,tests/test_pyJsonFriendly.py::TestPyJsonFriendly::test_01,OD-Vic,Unmaintained,,latest commit 2019/11/02
-https://github.com/macropin/django-registration/tree/master/registration,ac3d8728eb453eea78fc19ba5124f4cd8c16c4c3,registration/tests/forms_custom_user.py registration/tests/forms.py,,,,pytest --flake-finder --flake-runs=1
 https://github.com/mahmoud/lithoxyl,9961553a065a1ad8bb7a2407fe74f2cfd6c79a20,lithoxyl/tests/test_stats.py::test_acc_random,OD-Brit,Unmaintained,,latest commit 2021/10/25
 https://github.com/mahmoud/lithoxyl,9961553a065a1ad8bb7a2407fe74f2cfd6c79a20,lithoxyl/tests/test_stats.py::test_momentacc_norm,NIO,Unmaintained,,latest commit 2021/10/25
 https://github.com/mahmoud/lithoxyl,9961553a065a1ad8bb7a2407fe74f2cfd6c79a20,lithoxyl/tests/test_stats.py::test_momentacc_norm,NOD,Unmaintained,,latest commit 2021/10/25
@@ -804,7 +788,6 @@ https://github.com/Martlark/flask-ipban,1a56cbfee501da36a3c86c7f38882381a14f45bb
 https://github.com/martyni/autoyaml,be3f450667bcca477683e63bcc49c67c5d170855,tests/autoyaml_test.py::TestAutoyamlMethods::test_b_decrypt_config,OD-Brit,,,
 https://github.com/martyni/autoyaml,be3f450667bcca477683e63bcc49c67c5d170855,tests/autoyaml_test.py::TestEncryptorMethods::test_b_decrypt,OD-Brit,,,
 https://github.com/matheusbsilva/plai,1d3bfb0438bb6bd2f8d8e42f17207f9449319763,tests/test_evaluation.py::TestPipeline::test_pipeline_raise_error_on_undeclared_dataframe,OD-Vic,Unmaintained,,latest commit 2022/01/31
-https://github.com/matheusbsilva/plai/issues/34,1d3bfb0438bb6bd2f8d8e42f17207f9449319763,tests/test_evaluation.py::TestPipeline::test_pipeline_raise_error_on_undeclared_dataframe,,,,pytest --randomly-seed=123
 https://github.com/matheuswhite/bluebees,ca18ee6dae60393480bac3893038790957727748,tests/test_application_data.py::test_cleanup,NOD,Unmaintained,,latest commit 2019/11/03
 https://github.com/matheuswhite/bluebees,ca18ee6dae60393480bac3893038790957727748,tests/test_file_helper.py::test_cleanup,NOD,Unmaintained,,latest commit 2019/11/03
 https://github.com/matheuswhite/bluebees,ca18ee6dae60393480bac3893038790957727748,tests/test_network_data.py::test_cleanup,NOD,Unmaintained,,latest commit 2019/11/03
@@ -908,7 +891,6 @@ https://github.com/napalm-automation/napalm,78a20a841f71fca8d9e7da04c4d21e58d365
 https://github.com/ndbroadbent/icloud_photos_downloader,e5f304941e2a74b1fbda06c4270ec2fc100e6a49,tests/test_cli.py::CliTestCase::test_tqdm,OD-Brit,,,
 https://github.com/Netflix-Skunkworks/policyuniverse,b633e572ecdba45d70398ac034fb44e0e4e7dbf8,policyuniverse/tests/test_expander_minimizer.py::TestMethods::test_expand_1,OD-Vic,,,
 https://github.com/Netflix-Skunkworks/policyuniverse,b633e572ecdba45d70398ac034fb44e0e4e7dbf8,policyuniverse/tests/test_expander_minimizer.py::TestMethods::test_expand_minimize_over_policies,OD-Vic,,,
-https://github.com/Netflix-Skunkworks/policyuniverse/issues/149,990ffe88f11c457b68e992106e63cf785af34fee,policyuniverse/tests/test_expander_minimizer.py::TestMethods::test_expand_1 policyuniverse/tests/test_expander_minimizer.py::TestMethods::test_expand_minimize_over_policies,NIO,,,pytest --flake-finder --flake-runs=2
 https://github.com/neulab/compare-mt,92502b30b1f228773179a01dd86fe1b8dfd400e5,tests/test_cache.py::TestScoreCache::test_score_cache_bootstrap,NOD,Unmaintained,,latest commit 2022/03/22
 https://github.com/neulab/compare-mt,92502b30b1f228773179a01dd86fe1b8dfd400e5,tests/test_cache.py::TestSentBucketCache::test_sentbucket_cache,OD-Brit,Unmaintained,,latest commit 2022/03/22
 https://github.com/neulab/compare-mt,92502b30b1f228773179a01dd86fe1b8dfd400e5,tests/test_cache.py::TestSrcWordAccCache::test_src_wordacc_cache,OD-Brit,Unmaintained,,latest commit 2022/03/22
@@ -926,7 +908,6 @@ https://github.com/nir0s/clu,77da967a4577ca4cf100cfe34e87b39ad88bf21c,tests/test
 https://github.com/nir0s/clu,77da967a4577ca4cf100cfe34e87b39ad88bf21c,tests/test_ghost.py::TestTinyDBStorage::test_is_initialized,OD-Vic,Unmaintained,,latest commit 2018/01/21
 https://github.com/nithinmurali/pygsheets,b34fb501f9c5d85b31a66a6ee9cd8789c79fc7a6,tests/online_test.py::TestCell::test_link,NIO,Accepted,https://github.com/nithinmurali/pygsheets/pull/516,
 https://github.com/nithinmurali/pygsheets,48158e3a2c20d8b84a28b117ae1024bd4dedee08,tests/online_test.py::TestCell::test_wrap_strategy,NIO,Accepted,https://github.com/nithinmurali/pygsheets/pull/517,
-https://github.com/nithinmurali/pygsheets/issues/519,48158e3a2c20d8b84a28b117ae1024bd4dedee08,tests/online_test.py::TestGridRange::test_start_b_end_b;tests/online_test.py::TestGridRange::test_start_b_end_ub;and tests/online_test.py::TestCell::test_properties,OD,,, pytest --randomly-seed=123
 https://github.com/nMustaki/debinterface,abd30a55dcbadc30fd66143adc196034b663054f,test/test_hostapd.py::TestHostapd::test_read,OD-Vic,Unmaintained,,latest commit 2021/07/05
 https://github.com/nordwind80/BT-Tracker,558c15b399871c1ca11d0c4ae1eb598e3060931e,Tracker/tests/test_event.py::TestEvent::test_object,OD-Brit,Unmaintained,,latest commit 2019/04/29
 https://github.com/ohke/sqs-polling,34d1375cf73e05211c73cd43bdd120ce076181c8,sqs_polling/tests/test_sqs_polling.py::TestSqsPolling::test_execute_delete,OD-Vic,Unmaintained,,latest commit 2021/11/17
@@ -945,23 +926,6 @@ https://github.com/opper/pyserverpilot,b6b896fea1155fa95febde84f74e0d2230523ab0,
 https://github.com/opper/pyserverpilot,b6b896fea1155fa95febde84f74e0d2230523ab0,tests/test_app.py::TestApp::test_update_app_validation,OD-Brit,Unmaintained,,latest commit 2021/03/30
 https://github.com/opper/pyserverpilot,b6b896fea1155fa95febde84f74e0d2230523ab0,tests/test_db.py::TestDb::test_get_db,OD-Brit,Unmaintained,,latest commit 2021/03/30
 https://github.com/opper/pyserverpilot,b6b896fea1155fa95febde84f74e0d2230523ab0,tests/test_db.py::TestDb::test_update_db,OD-Brit,Unmaintained,,latest commit 2021/03/30
-https://github.com/optiflows/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestNewTask::test_new_task_bad_holder,NOD,RepoDeleted,,
-https://github.com/optiflows/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestNewTask::test_new_task_bad_inputs,NOD,RepoDeleted,,
-https://github.com/optiflows/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestNewTask::test_new_task_ok,OD-Vic,RepoDeleted,,
-https://github.com/optiflows/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestNewTask::test_new_task_unknown,NOD,RepoDeleted,,
-https://github.com/optiflows/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskFactory::test_tukio_task_attrs_from_coro,OD-Vic,RepoDeleted,,
-https://github.com/optiflows/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskFactory::test_without_tukio_factory,OD-Vic,RepoDeleted,,
-https://github.com/optiflows/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskFactory::test_with_tukio_factory,OD-Vic,RepoDeleted,,
-https://github.com/optiflows/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskRegistry::test_register_same_name,OD-Vic,RepoDeleted,,
-https://github.com/optiflows/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskRegistry::test_valid_registrations,OD-Vic,RepoDeleted,,
-https://github.com/optiflows/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskTemplate::test_build_from_dict,NOD,RepoDeleted,,
-https://github.com/optiflows/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskTemplate::test_build_from_dict_without_name,NOD,RepoDeleted,,
-https://github.com/optiflows/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskTemplate::test_dump_as_dict,NOD,RepoDeleted,,
-https://github.com/optiflows/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskTemplate::test_new_task,OD-Vic,RepoDeleted,,
-https://github.com/optiflows/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskTemplate::test_new_task_bad_args,NOD,RepoDeleted,,
-https://github.com/optiflows/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskTemplate::test_new_task_unknown,NOD,RepoDeleted,,
-https://github.com/optiflows/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskTemplate::test_new_template,NOD,RepoDeleted,,
-https://github.com/osantana/prettyconf/issues/47,f278b6ac6786f6ab8fe41ffacde0cc1e41cee207,tests/test_commandline.py::test_ignores_not_set_values,OD,,,pytest --randomly-seed=123
 https://github.com/Osirium/vcdriver,2f311df9a73c82b5837d01bac16a10eb4db955eb,test/unit/test_config.py::test_read,NIO,Opened,https://github.com/Osirium/vcdriver/pull/23,
 https://github.com/Osirium/vcdriver,2f311df9a73c82b5837d01bac16a10eb4db955eb,test/unit/test_config.py::test_read,OD-Vic,Unmaintained,,latest commit 2021/01/06
 https://github.com/oskar456/dzonegit,8f952086aa41aee4ebb7432926ed8c6a9211ac9f,test_dzonegit.py::test_get_altered_files,OD-Brit,Unmaintained,,latest commit 2021/12/21
@@ -1015,9 +979,7 @@ https://github.com/Prodesire/pydu,4a1c2f15f7274d5079fb08b02ab1dbe08c0cefef,tests
 https://github.com/Prodesire/pydu,4a1c2f15f7274d5079fb08b02ab1dbe08c0cefef,tests/test_system.py::TestWhich::test_cmd_path,NIO,Opened,https://github.com/Prodesire/pydu/pull/22,
 https://github.com/prymitive/upaas-common,7a7d9ffb385151092c637c3ef500a79623c005ae,tests/test_storage_local.py::test_dir_exists,NIO,RepoArchived,,
 https://github.com/pustotnik/zenmake,6cff05114cea34fc204d9e95422f11dc25cd1228,tests/test_waf_assist.py::testUsedWafTaskKeys,NIO,Accepted,https://github.com/pustotnik/zenmake/pull/29,
-https://github.com/pyasi/pybuildkite/issues/72,0cf6db2adcc01bf3014b84da5e15f6e1bc50b46b,tests/test_client.py::TestClientRequest,OD,,,pytest --randomly-seed=123 or pytest --randomly-seed=1234
 https://github.com/pycqa/mccabe,e92e9e79799c5796f76f3da821dbb5aa56e41028,test_mccabe.py::RegressionTests::test_max_complexity_is_always_an_int,OD-Brit,,,
-https://github.com/pydicom/pydicom/issues/1540,1908b294b2c32c98420c6624c69fc3e294545178,pydicom/tests/test_dataelem.py::TestRawDataElement::test_read_known_private_tag_implicit and pydicom/tests/test_dataelem.py::TestRawDataElement::test_read_known_private_tag_explicit,NIO,,,pytest --flake-finder --flake-runs=2
 https://github.com/PyFunceble/domain2idna,39a1c4e1ebb877ed511e53b618fbe437a685c970,tests/test_cli.py::TestCLI::test_domain,OD-Vic,Opened,https://github.com/PyFunceble/domain2idna/pull/4,
 https://github.com/PyFunceble/domain2idna,39a1c4e1ebb877ed511e53b618fbe437a685c970,tests/test_cli.py::TestCLI::test_file,OD-Vic,,,
 https://github.com/PyFunceble/domain2idna,39a1c4e1ebb877ed511e53b618fbe437a685c970,tests/test_converter.py::TestConverter::test_commented_line,OD-Vic,Opened,https://github.com/PyFunceble/domain2idna/pull/4,
@@ -1074,7 +1036,6 @@ https://github.com/raamana/pyradigm,01d47cf34a9af4bb104e2891559059a522221b4d,pyr
 https://github.com/raamana/pyradigm,01d47cf34a9af4bb104e2891559059a522221b4d,pyradigm/tests/test_regress_dataset.py::test_num_targets,OD-Vic,,,
 https://github.com/raamana/pyradigm,01d47cf34a9af4bb104e2891559059a522221b4d,pyradigm/tests/test_regress_dataset.py::test_return_data_labels,OD-Vic,,,
 https://github.com/raphaelvallat/pingouin,08560bb978949e97653b203f7374e90b022b88fb,pingouin/tests/test_regression.py::TestRegression::test_logistic_regression,OD-Vic,Accepted,https://github.com/raphaelvallat/pingouin/pull/303,
-https://github.com/raphaelvallat/pingouin/issues/211,cc5d687e24453e79987991484f9311e738bcaa59,pingouin/tests/test_regression.py,,,,pytest --flake-finder --flake-runs=2 or pytest --randomly-seed=1234
 https://github.com/rduldulao/tornado-swirl,b8df27efc3d7fd0dce0f0290767c94ac2e747311,tests/test_swirl.py::TestSampleEndpoints::test_security_scheme1,OD-Brit,Unmaintained,,latest commit 2019/12/19
 https://github.com/rduldulao/tornado-swirl,b8df27efc3d7fd0dce0f0290767c94ac2e747311,tests/test_swirl.py::TestSampleEndpoints::test_security_scheme2,OD-Brit,Unmaintained,,latest commit 2019/12/19
 https://github.com/richecr/PyGraph,e81c3a0f543f5bfcda1a603c6dcecde13d582c57,__tests__/test_simple_graph.py::TestSimpleGraph::test_add_vertex,OD,Accepted,https://github.com/richecr/PyGraph/pull/96,
@@ -1319,22 +1280,6 @@ https://github.com/SuryaSankar/flask-sqlalchemy-booster,e43980e29a18e725d791b87c
 https://github.com/SuryaSankar/flask-sqlalchemy-booster,e43980e29a18e725d791b87ce1b677470bbaf22c,tests/test_view_boosters/test_todo_list_api/test_api_endpoints.py::test_task_updation,OD-Brit,Unmaintained,,latest commit 2021/05/15
 https://github.com/SuryaSankar/flask-sqlalchemy-booster,e43980e29a18e725d791b87ce1b677470bbaf22c,tests/test_view_boosters/test_todo_list_api/test_api_endpoints.py::test_user_creation,NIO,Opened,https://github.com/SuryaSankar/flask-sqlalchemy-booster/pull/18,
 https://github.com/SuryaSankar/flask-sqlalchemy-booster,e43980e29a18e725d791b87ce1b677470bbaf22c,tests/test_view_boosters/test_todo_list_api/test_relationship_updates.py::test_list_relationship_new_item,NIO,Opened,https://github.com/SuryaSankar/flask-sqlalchemy-booster/pull/18,
-https://github.com/surycat/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestNewTask::test_new_task_bad_holder,NOD,RepoDeleted,,
-https://github.com/surycat/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestNewTask::test_new_task_bad_inputs,NOD,RepoDeleted,,
-https://github.com/surycat/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestNewTask::test_new_task_ok,OD-Vic,RepoDeleted,,
-https://github.com/surycat/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestNewTask::test_new_task_unknown,NOD,RepoDeleted,,
-https://github.com/surycat/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskFactory::test_tukio_task_attrs_from_coro,OD-Vic,RepoDeleted,,
-https://github.com/surycat/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskFactory::test_without_tukio_factory,OD-Vic,RepoDeleted,,
-https://github.com/surycat/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskFactory::test_with_tukio_factory,OD-Vic,RepoDeleted,,
-https://github.com/surycat/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskRegistry::test_register_same_name,OD-Vic,RepoDeleted,,
-https://github.com/surycat/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskRegistry::test_valid_registrations,OD-Vic,RepoDeleted,,
-https://github.com/surycat/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskTemplate::test_build_from_dict,NOD,RepoDeleted,,
-https://github.com/surycat/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskTemplate::test_build_from_dict_without_name,NOD,RepoDeleted,,
-https://github.com/surycat/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskTemplate::test_dump_as_dict,NOD,RepoDeleted,,
-https://github.com/surycat/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskTemplate::test_new_task,OD-Vic,RepoDeleted,,
-https://github.com/surycat/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskTemplate::test_new_task_bad_args,NOD,RepoDeleted,,
-https://github.com/surycat/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskTemplate::test_new_task_unknown,NOD,RepoDeleted,,
-https://github.com/surycat/tukio,116b35dbceae899d7996b1788449a6e31e3f4512,tests/test_task.py::TestTaskTemplate::test_new_template,NOD,RepoDeleted,,
 https://github.com/sushobhit27/multiindex,b631e60bd47558eca9067a0dc87f0e713cddc6f2,multiindex/tests/test_multiindex.py multiindex/tests/test_multiindex_hashed_non_unique.py,,Unmaintained,,pytest --flake-finder --flake-runs=2;latest commit 2018/08/29
 https://github.com/sushobhit27/multiindex,b631e60bd47558eca9067a0dc87f0e713cddc6f2,multiindex/tests/test_multiindex.py::test_insert,OD-Vic,Unmaintained,,latest commit 2018/08/29
 https://github.com/sushobhit27/multiindex,b631e60bd47558eca9067a0dc87f0e713cddc6f2,multiindex/tests/test_multiindex.py::test_insert_overwrite,NIO,Opened,https://github.com/sushobhit27/multiindex/pull/1,
@@ -1344,7 +1289,6 @@ https://github.com/sushobhit27/multiindex,b631e60bd47558eca9067a0dc87f0e713cddc6
 https://github.com/sushobhit27/multiindex,b631e60bd47558eca9067a0dc87f0e713cddc6f2,multiindex/tests/test_multiindex_hashed_non_unique.py::test_insert,OD-Vic,Unmaintained,,latest commit 2018/08/29
 https://github.com/sushobhit27/multiindex,b631e60bd47558eca9067a0dc87f0e713cddc6f2,multiindex/tests/test_multiindex_hashed_non_unique.py::test_modify,NIO,Opened,https://github.com/sushobhit27/multiindex/pull/3,
 https://github.com/sushobhit27/multiindex,b631e60bd47558eca9067a0dc87f0e713cddc6f2,multiindex/tests/test_multiindex_hashed_non_unique.py::test_remove,NIO,Opened,https://github.com/sushobhit27/multiindex/pull/3,
-https://github.com/swstephe/py2jdbc/issues/8,515d06a48e54ca9f690f94fd795e49ba7758fcd4,tests/test_dbi.py,OD,,,pytest --randomly-seed=123
 https://github.com/sylhare/gitlab_stats,157de3b703031ef0de39e187314133624f1ac1bb,tests/test_utils.py::UtilsTest::test_056_enhance_project_info,NIO,Unmaintained,,latest commit 2021/04/23
 https://github.com/syrusakbary/promise,4627315476f6b9fc82818327ae09b04f89f9bda7,tests/test_dataloader.py::test_wrong_loader_return_type_does_not_block_async_instance,OD-Brit,Unmaintained,,latest commit 2020/01/28
 https://github.com/taxpon/pytidy,0a0a54b80b53dadd8ecc8ff2db42444741b75865,tests/test_dataclass.py::test_class_is_inserted_to_dataclass,OD-Vic,Unmaintained,,latest commit 2021/03/31
@@ -1503,7 +1447,6 @@ https://github.com/unfoldingWord-dev/python-resource-container,64d87f900af969f47
 https://github.com/uriyyo/instapi,6f972e2ae1ccc9a21eb6b18136ee677667cd4ba5,tests/unit_tests/models/test_media.py::test_media_info,NOD,Opened ,https://github.com/uriyyo/instapi/pull/139,
 https://github.com/Varkal/chuda,bd4d30c0f809d5349752ab2f322f30b01ab6b4a4,tests/test_app.py::test_output[argv0],OD-Vic,Unmaintained,,latest commit 2019/08/06
 https://github.com/verdan/pyatlasclient,6c3ef3926eef059f00730b6bcc1a1787f6bbcd9c,tests/test_models.py::TestDiscoveryREST::test_search_attribute_get,OD-Vic,Unmaintained,,latest commit 2021/12/02
-https://github.com/verdan/pyatlasclient/issues/12,afb4bb6c169c7aedefaac91f12e150ad9c1da8db,tests/test_models.py::TestDiscoveryREST::test_search_attribute_get,OD,,,pytest --randomly-seed=1234
 https://github.com/vilkasgroup/Verifone,5509c08767a9b482cfe5a9572854cf4c73ad6c02,tests/test_verifone.py::TestVerifone::test_001_create_object_with_defaults,OD-Vic,,,
 https://github.com/vitalk/flask-apify,f486d2616575be0e460ccf354d22badb7d68b387,tests/test_apify.py::test_apify_init,OD-Vic,Unmaintained,,latest commit 2016/08/14
 https://github.com/vitalk/flask-apify,f486d2616575be0e460ccf354d22badb7d68b387,tests/test_serializers.py::TestJSONPSerializer::test_support_custom_callback_name,OD-Brit,Unmaintained,,latest commit 2016/08/14
@@ -1511,7 +1454,6 @@ https://github.com/vitalk/flask-apify,f486d2616575be0e460ccf354d22badb7d68b387,t
 https://github.com/vkbo/novelWriter,559f2e53e410f9793ab08c2ef7ed308f75c92985,tests/test_project.py::testProjectNewCustom,NIO,DeveloperFixed,,
 https://github.com/vkbo/novelWriter,559f2e53e410f9793ab08c2ef7ed308f75c92985,tests/test_project.py::testProjectNewMinimal,NIO,DeveloperFixed,,
 https://github.com/Vnet-as/myr-base,56e347b4f4d70f53a6afe55e96c1f9e35f5454eb,tests/test_base.py::TestApp::test_announcing_no_tasks,OD-Vic,RepoArchived,,
-https://github.com/voxpupuli/puppetboard/issues/646,88401f64b20da20edaf14558d6c0e9bdc697de3b,test/test_app.py,OD,,,pytest --randomly-seed=123 or pytest --randomly-seed=1234
 https://github.com/voytekresearch/fooof,7a520c4f8ac3a44f4f18dc025b5e5d40049c9f2b,fooof/tests/core/test_io.py::test_load_file_contents,OD-Brit,Rejected,https://github.com/fooof-tools/fooof/pull/243,
 https://github.com/voytekresearch/fooof,7a520c4f8ac3a44f4f18dc025b5e5d40049c9f2b,fooof/tests/core/test_io.py::test_load_jsonlines,OD-Brit,Rejected,https://github.com/fooof-tools/fooof/pull/243,
 https://github.com/voytekresearch/fooof,7a520c4f8ac3a44f4f18dc025b5e5d40049c9f2b,fooof/tests/core/test_io.py::test_load_json_fobj,OD-Brit,Rejected,https://github.com/fooof-tools/fooof/pull/243,
@@ -1525,7 +1467,6 @@ https://github.com/voytekresearch/fooof,7a520c4f8ac3a44f4f18dc025b5e5d40049c9f2b
 https://github.com/voytekresearch/fooof,7a520c4f8ac3a44f4f18dc025b5e5d40049c9f2b,fooof/tests/utils/test_io.py::test_load_fooofgroup,OD-Brit,,,
 https://github.com/waqasbhatti/authnzerver,bc735a1c9e1c084c40854a539a000d69a50ed486,authnzerver/tests/test_auth_creation.py::test_create_user,OD-Vic,Unmaintained,,latest commit 2022/01/29
 https://github.com/waqasbhatti/authnzerver,bc735a1c9e1c084c40854a539a000d69a50ed486,authnzerver/tests/test_auth_permissions.py::test_role_permissions,OD-Vic,Unmaintained,,latest commit 2022/01/29
-https://github.com/washad/PyRedisEasyIO,30d566760aa622ae6e8fcc1fa4abdc79b6bda614,tests/test_operator_overloads.py::TestOperatorOverloads::test_plus_equals,OD-Vic,Unmaintained,,latest commit 2019/07/23
 https://github.com/WCraaS/wcraas_common,af209ab412c18473edfaaf2871eef9c0357b91e9,tests/test_wcraas_common.py::test_default_env_load,OD-Vic,Unmaintained,,latest commit 2020/01/09
 https://github.com/weka-io/easypy,9501c3ee03dcb1630e58cbb73b1647056907bcea,tests/test_caching.py::test_resilient_between_timecaches,OD-Vic,RepoArchived,,
 https://github.com/weka-io/easypy,9501c3ee03dcb1630e58cbb73b1647056907bcea,tests/test_concurrency.py::test_concurrent_done_status[False],OD-Vic,RepoArchived,,
@@ -1582,7 +1523,6 @@ https://github.com/wilfredinni/marlin,85f4ae0080ee9a25c1b8d2e481725ac9c42ca99f,t
 https://github.com/wilfredinni/marlin,85f4ae0080ee9a25c1b8d2e481725ac9c42ca99f,tests/test_marlin.py::test_remove_bookmark,NOD,Unmaintained,,latest commit 2021/08/14
 https://github.com/willforde/urlquick,db765372b73800cfa056047a3f3331820abd4ae8,tests/test_urlquick.py::TestCacheHandler::test_cache_check_no_cache,OD-Vic,,,
 https://github.com/willvousden/ptemcee,a411be2e29e39585212c92acea1893f955aa9be8,ptemcee/tests.py::Tests::test_inf_logprob,OD-Vic,RepoArchived,,
-https://github.com/willvousden/ptemcee/issues/16,a411be2e29e39585212c92acea1893f955aa9be8,ptemcee/tests.py::Tests::test_inf_logprob,OD,RepoArchived,,pytest --randomly-seed=123
 https://github.com/Windsooon/cherry,bc6ae1f0284d837fb95279098538530312313534,tests/test_classify.py::ClassifyTest::test_init,OD-Vic,Unmaintained,,latest commit 2022/01/19
 https://github.com/Windsooon/cherry,bc6ae1f0284d837fb95279098538530312313534,tests/test_classify.py::ClassifyTest::test_load_cache,OD-Brit,Unmaintained,,latest commit 2022/01/19
 https://github.com/Windsooon/cherry,bc6ae1f0284d837fb95279098538530312313534,tests/test_classify.py::test_init,NIO,Opened,https://github.com/Windsooon/cherry/pull/19,
@@ -1593,8 +1533,6 @@ https://github.com/wsilva32/poly_decomp.py,cb1a47f218e076772b9df137c1928023882df
 https://github.com/wsilva32/poly_decomp.py,cb1a47f218e076772b9df137c1928023882df5e5,tests/test_poly_decomp.py::TestPoly_Decomp::test_polygonAt,OD-Vic,Unmaintained,,latest commit 2016/10/25
 https://github.com/wsilva32/poly_decomp.py,cb1a47f218e076772b9df137c1928023882df5e5,tests/test_poly_decomp.py::TestPoly_Decomp::test_polygonAt_negative_index,OD-Vic,Unmaintained,,latest commit 2016/10/25
 https://github.com/wsilva32/poly_decomp.py,cb1a47f218e076772b9df137c1928023882df5e5,tests/test_poly_decomp.py::TestPoly_Decomp::test_polygonIsReflex,OD-Vic,Unmaintained,,latest commit 2016/10/25
-https://github.com/ww-tech/primrose,bd9bb8d5d5aaf31d473d01645a862ac9d5fc6f8e,test/test_factory.py::test_unregister,OD-Vic,,,
-https://github.com/ww-tech/primrose/issues/113,b4dd98ca298c6d70c2fb7a9e5ff1c768306e6899,test/test_factory.py::test_unregister test/test_abstract_pipeline.py::test_execute_pipeline,,,,pytest
 https://github.com/xlcnd/isbnlib,4dd24ceb7b686e78ee872d667014c6b3935b718c,isbnlib/test/test_cache.py::test_cache_del,NIO,Accepted,https://github.com/xlcnd/isbnlib/pull/100,
 https://github.com/Yelp/kafka-utils,bde091515d1dcdd56b9272a3ab01b54742a60253,tests/kafka_rolling_restart/test_main.py::test_get_broker_list3,NIO,RepoArchived,,
 https://github.com/Yelp/kafka-utils,bde091515d1dcdd56b9272a3ab01b54742a60253,tests/kafka_rolling_restart/test_main.py::test_wait_for_stable_cluster_success,NIO,RepoArchived,,
@@ -1605,7 +1543,6 @@ https://github.com/yukinotenshi/pydeploy,e3ddf907b293c9da28503b3d72414a303c5dfbe
 https://github.com/yukinotenshi/pydeploy,e3ddf907b293c9da28503b3d72414a303c5dfbed,pydeploy/tests/test_command_chain.py::TestCommandChain::test_notifier_loaded,OD-Vic,Unmaintained,,latest commit 2018/12/07
 https://github.com/yukinotenshi/pydeploy,e3ddf907b293c9da28503b3d72414a303c5dfbed,pydeploy/tests/test_command_chain.py::TestCommandChain::test_postscript_only,OD-Vic,Unmaintained,,latest commit 2018/12/07
 https://github.com/yukinotenshi/pydeploy,e3ddf907b293c9da28503b3d72414a303c5dfbed,pydeploy/tests/test_command_chain.py::TestCommandChain::test_prescript_only,OD-Vic,Unmaintained,,latest commit 2018/12/07
-https://github.com/yukinotenshi/pydeploy/issues/5,e3ddf907b293c9da28503b3d72414a303c5dfbed,pydeploy/tests/test_command_chain.py::TestCommandChain::test_all pydeploy/tests/test_command_chain.py::TestCommandChain::test_notifier_loaded,,,,pytest or pytest --randomly-seed=123
 https://github.com/Zabamund/wellpathpy,f29b14a9a1c46e77ea98b141e3cdc43674654ea2,wellpathpy/test/test_location.py::test_wellhead,OD-Vic,,,
 https://github.com/Zabamund/wellpathpy,f29b14a9a1c46e77ea98b141e3cdc43674654ea2,wellpathpy/test/test_location.py::test_zero,NIO,Accepted,https://github.com/Zabamund/wellpathpy/pull/50,
 https://github.com/zdhoward/aud,2dfc81dad3da78537e1b1c6f5cc5630ba5b837f9,aud/test_aud.py::test_afx_2,NOD,Unmaintained,,latest commit 2020/10/12

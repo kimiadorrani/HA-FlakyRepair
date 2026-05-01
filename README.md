@@ -26,9 +26,74 @@ pip install -r requirements.txt
 
 ## IDOFT
 
-### End-to-End
+There are two independent ways to run IDOFT tests:
 
-If you want the standard IDOFT flow from raw dataset to detection, run:
+1. **Standalone batch runner** (`scripts/idoft/`) — simple, Docker-container-per-project approach, mirrors the UIFlaky runner. Good for fresh reproduction passes and retrying failures.
+2. **LangGraph pipeline** (`src/`) — adds LLM-based detection on top of reproduction. Use this for the full detection experiment.
+
+### Standalone Batch Runner
+
+#### End-to-End (one command)
+
+```bash
+# Clone any missing repos, then reproduce all non-OD tests
+.venv/bin/python -m src.data.idoft.preprocess.fetch_workspaces
+PYTHONUNBUFFERED=1 .venv/bin/python scripts/idoft/run_idoft_batch.py --iterations 10
+```
+
+Results are written incrementally to:
+
+```text
+datasets/idoft/idoft-reproduction-results.csv
+results/idoft/*.json
+```
+
+#### Step-by-Step
+
+##### 1. Clone Repositories
+
+```bash
+.venv/bin/python -m src.data.idoft.preprocess.fetch_workspaces
+```
+
+Repos are cloned into `workspaces/idoft/<repo_name>`.
+
+##### 2. Run One Test
+
+```bash
+.venv/bin/python scripts/idoft/run_idoft_test.py --row-index 0 --iterations 10
+```
+
+Use `--input-csv` to point at a different CSV (default: `datasets/idoft/raw/py-data.csv`).
+
+##### 3. Run The Full Batch
+
+```bash
+PYTHONUNBUFFERED=1 .venv/bin/python scripts/idoft/run_idoft_batch.py --iterations 10
+```
+
+Options:
+
+```bash
+# Only one project
+.venv/bin/python scripts/idoft/run_idoft_batch.py --project webssh --iterations 10
+
+# Retry rows that previously errored or could not be reproduced
+.venv/bin/python scripts/idoft/run_idoft_batch.py \
+    --input-csv datasets/idoft/preprocessed/py-data-reproducible.csv \
+    --retry-statuses execution_error could_not_reproduce \
+    --iterations 10
+
+# Limit for quick debugging
+.venv/bin/python scripts/idoft/run_idoft_batch.py --limit 5
+
+# Parallel workers (default 2, increase if Docker has headroom)
+.venv/bin/python scripts/idoft/run_idoft_batch.py --workers 4 --iterations 10
+```
+
+### LangGraph Detection Pipeline
+
+#### End-to-End
 
 ```bash
 .venv/bin/python -m src.preprocess_dataset
@@ -40,98 +105,55 @@ This gives you:
 - a preprocessing report at `datasets/idoft/preprocessed/preprocess-report.json`
 - detection results under `results/`
 
-### Step-by-Step
+#### Step-by-Step
 
-#### 1. Preprocess The Dataset
+##### 1. Preprocess The Dataset
 
-This step:
-- fetches any missing non-OD repositories into `workspaces/idoft/`
-- runs the reproducibility pass
-- records preprocessing outcome fields back into the cleaned CSV
-
-Run:
 ```bash
 .venv/bin/python -m src.preprocess_dataset
 ```
 
 Outputs:
+
 ```text
 datasets/idoft/preprocessed/py-data-reproducible.csv
 datasets/idoft/preprocessed/preprocess-report.json
 ```
 
-The cleaned CSV now keeps every processed row, not only reproduced ones. Each row
-is annotated with preprocessing outcome fields such as:
-- `Preprocess Status`
-- `Reproduced`
-- `Preprocess Error`
-- `Selected Profile`
-- `CPU Limit`
-- `Memory Limit`
-- `Pass Count`
-- `Fail Count`
-- `Outcome Profile`
+Each row is annotated with: `Preprocess Status`, `Reproduced`, `Preprocess Error`,
+`Selected Profile`, `CPU Limit`, `Memory Limit`, `Pass Count`, `Fail Count`, `Outcome Profile`.
 
-When you later run `src.main` on that cleaned CSV, it uses only rows marked as
-reproduced by default and reuses the stored CPU and memory settings for them.
-If you want to include rows that preprocessing marked as not reproduced, add:
-```bash
-.venv/bin/python -m src.main --input-csv datasets/idoft/preprocessed/py-data-reproducible.csv --include-not-reproduced
-```
+##### 2. Run Detection
 
-If a repository already exists in `workspaces/idoft/`, it is skipped and not downloaded again.
-
-#### 2. Run Detection On The Clean CSV
-
-After preprocessing, run the detection phase on the cleaned dataset:
 ```bash
 .venv/bin/python -m src.main --input-csv datasets/idoft/preprocessed/py-data-reproducible.csv
 ```
 
-#### 3. Optional Variations
+To include rows that could not be reproduced:
 
-You can still run the raw dataset directly if needed:
 ```bash
-.venv/bin/python -m src.main
+.venv/bin/python -m src.main --input-csv datasets/idoft/preprocessed/py-data-reproducible.csv --include-not-reproduced
 ```
 
-Fetch missing repositories only:
+##### 3. Filters
+
 ```bash
-.venv/bin/python -m src.data.idoft.preprocess.fetch_workspaces
+.venv/bin/python -m src.main --project bottle-neck
+.venv/bin/python -m src.main --category NOD
+.venv/bin/python -m src.main --limit 3
 ```
 
 Export reproduced tests from an existing results session:
+
 ```bash
 .venv/bin/python -m src.data.idoft.preprocess.export_reproducible_csv --session 2026-03-24_14-35-48
 ```
 
-Run only one project:
-```bash
-.venv/bin/python -m src.main --project bottle-neck
-```
-
-Run only one category:
-```bash
-.venv/bin/python -m src.main --category NOD
-```
-
-Run only the first `N` tests:
-```bash
-.venv/bin/python -m src.main --limit 3
-```
-
 ### Notes
-- By default, OD / OD-Vic / OD-Brit rows are skipped.
-- Detection currently calls the LLM only when flaky behavior is actually reproduced.
-- Result files now record:
-  - `pass_count`
-  - `fail_count`
-  - `outcome_profile`
-  - `execution_profiles`
-- The cleaned reproducible CSV also stores the selected execution profile so
-  `src.main` can rerun tests with the same settings found during preprocessing.
-- Docker state is aggressively cleaned before each run to reduce disk usage.
-- The runner can fall back from a baseline run to a stressed run when a test is `always_pass`.
+- OD / OD-Vic / OD-Brit rows are skipped by default in both runners.
+- The standalone runner mounts each repo as a Docker volume and reuses one container per project, mirroring the UIFlaky runner design.
+- The LangGraph pipeline builds a per-project Docker image (heavier, but bakes in all deps).
+- Both runners use targeted `git fetch origin <sha>` for shallow clones instead of `git fetch --all`, which avoids the most common checkout failure.
 
 ## FLAKYCAT
 

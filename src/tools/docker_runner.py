@@ -35,7 +35,7 @@ def _clone_and_checkout(repo_url: str, commit_sha: str, project_dir: str) -> Non
     if not os.path.exists(project_dir):
         logger.info("Cloning %s …", repo_url)
         subprocess.run(
-            ["git", "clone", repo_url, project_dir],
+            ["git", "clone", "--depth", "100", repo_url, project_dir],
             check=True, capture_output=True
         )
 
@@ -44,7 +44,25 @@ def _clone_and_checkout(repo_url: str, commit_sha: str, project_dir: str) -> Non
         logger.info("Workspace %s already prepared at %s, reusing checkout.", project_dir, commit_sha)
         return
 
-    subprocess.run(["git", "fetch", "--all"], cwd=project_dir, capture_output=True)
+    # Targeted fetch: only pull what we need instead of --all (which fails on shallow clones)
+    sha_missing = subprocess.run(
+        ["git", "cat-file", "-e", commit_sha], cwd=project_dir, capture_output=True
+    ).returncode != 0
+    if sha_missing:
+        logger.info("SHA %s not in local history, fetching from origin…", commit_sha[:12])
+        subprocess.run(
+            ["git", "fetch", "origin", commit_sha],
+            cwd=project_dir, capture_output=True,
+        )
+        still_missing = subprocess.run(
+            ["git", "cat-file", "-e", commit_sha], cwd=project_dir, capture_output=True
+        ).returncode != 0
+        if still_missing:
+            subprocess.run(
+                ["git", "fetch", "origin", "--depth", "50", "--update-shallow"],
+                cwd=project_dir, capture_output=True,
+            )
+
     subprocess.run(
         ["git", "checkout", "-f", commit_sha],
         cwd=project_dir, check=True, capture_output=True

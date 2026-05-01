@@ -1,0 +1,37 @@
+{
+  "total": 397,
+  "by_status": {
+    "always_fail": 225,
+    "reproduced": 102,
+    "always_pass": 68,
+    "error": 2
+  },
+  "reproduced": 102,
+  "always_fail": 225,
+  "always_pass": 68,
+  "error": 2,
+  "reproduction_rate_pct": 25.7,
+  "by_category": {
+    "ID": {
+      "always_fail": 3
+    },
+    "NIO": {
+      "reproduced": 88,
+      "always_fail": 62
+    },
+    "NOD": {
+      "always_fail": 148,
+      "always_pass": 54,
+      "reproduced": 9,
+      "error": 2
+    },
+    "UD": {
+      "always_fail": 1
+    },
+    "UNKNOWN": {
+      "always_pass": 14,
+      "always_fail": 11,
+      "reproduced": 5
+    }
+  }
+}
