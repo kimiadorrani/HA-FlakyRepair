@@ -1,5 +1,0 @@
-public void methodologyTest(String title) throws Exception {
-    String parameters = "polychord";
-    getSelenium().waitForCondition(parameters, maxWaitTimeInMs);
-    Assert.assertEquals(getTitle(), title);
-}

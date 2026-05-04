@@ -1,7 +1,0 @@
-@Test(dependsOnMethods = "assigning")
-public void regulateTest() {
-    JobList departments = api().jobList("");
-    assertNotNull(departments);
-    assertFalse(departments.jobs().isEmpty());
-    assertEquals(departments.jobs().size(), 2);
-}

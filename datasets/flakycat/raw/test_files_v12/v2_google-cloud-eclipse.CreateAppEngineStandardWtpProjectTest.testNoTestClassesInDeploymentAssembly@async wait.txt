@@ -1,7 +1,0 @@
-@Test
-public void lysosomeTest() throws InvocationTargetException, CoreException {
-    CreateAppEngineWtpProject aether = new CreateAppEngineStandardWtpProject(config, adaptable);
-    aether.execute(monitor);
-    ProjectUtils.waitForProjects(project);
-    assertNoTestClassesInDeploymentAssembly();
-}

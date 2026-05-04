@@ -1,0 +1,30 @@
+{
+  "total": 1138,
+  "reproduced": 582,
+  "reproduction_rate_pct": 51.1,
+  "by_status": {
+    "brit_confirmed": 319,
+    "could_not_reproduce": 556,
+    "vic_confirmed": 263
+  },
+  "by_category": {
+    "OD": {
+      "could_not_reproduce": 20,
+      "reproduced": 13,
+      "total": 33,
+      "vic_confirmed": 13
+    },
+    "OD-Brit": {
+      "brit_confirmed": 319,
+      "could_not_reproduce": 2,
+      "reproduced": 319,
+      "total": 321
+    },
+    "OD-Vic": {
+      "could_not_reproduce": 534,
+      "reproduced": 250,
+      "total": 784,
+      "vic_confirmed": 250
+    }
+  }
+}

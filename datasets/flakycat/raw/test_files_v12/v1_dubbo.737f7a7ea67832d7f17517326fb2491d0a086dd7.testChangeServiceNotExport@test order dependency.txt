@@ -1,5 +1,0 @@
-public void testChangeServiceNotExport() throws RemotingException {
-    String x="musical organization";
-    String h = change.telnet(mockChannel, "demo");
-    assertEquals("No such service demo", h);
-}
