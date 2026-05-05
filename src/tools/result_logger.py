@@ -23,7 +23,6 @@ from datetime import datetime
 from typing import Any
 
 from src.evaluation.detection import DetectionEvaluator
-from src.tracing.writer import TraceWriter
 from src.tracing.agent_trace import PipelineTrace
 
 logger = logging.getLogger(__name__)
@@ -86,7 +85,6 @@ class ResultLogger:
         os.makedirs(self.session_dir, exist_ok=True)
 
         self._detection_eval = DetectionEvaluator()
-        self._trace_writer   = TraceWriter(self.session_dir)
 
         self._summary: dict[str, Any] = {
             "session_id":     session_id,
@@ -145,7 +143,7 @@ class ResultLogger:
         _append_json(filepath, project_name, record)
         logger.info("Detection saved: %s :: %s", project_name, state.get("test_name"))
 
-        # traces
+        # traces — raw JSONL
         detection_spans = [
             s for s in (state.get("pipeline_trace") or [])
             if s.get("agent") == "detection"
@@ -200,7 +198,7 @@ class ResultLogger:
             project_name, state.get("test_name"), state.get("is_fixed"),
         )
 
-        # traces
+        # traces — raw JSONL
         repair_spans = [
             s for s in (state.get("pipeline_trace") or [])
             if s.get("agent") == "repair"

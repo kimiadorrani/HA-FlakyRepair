@@ -16,6 +16,7 @@ Typical usage inside an agent node:
 from __future__ import annotations
 
 import logging
+import re
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -24,6 +25,26 @@ from typing import Any, Generator
 from langchain_core.callbacks import BaseCallbackHandler
 
 logger = logging.getLogger(__name__)
+
+_MAX_LLM_TEXT  = 500   # chars of post-<think> action text stored per LLM call
+_MAX_TOOL_IO   = 600   # chars of tool input / output stored in trace
+
+
+def _clean_llm_text(text: str) -> str:
+    """Strip <think> blocks and keep only the model's action / final answer."""
+    cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+    if len(cleaned) > _MAX_LLM_TEXT:
+        return cleaned[:_MAX_LLM_TEXT] + f" …[+{len(cleaned)-_MAX_LLM_TEXT} chars]"
+    return cleaned
+
+
+def _truncate(text: str | None, max_len: int = _MAX_TOOL_IO) -> str | None:
+    """Truncate a string for trace storage."""
+    if text is None:
+        return None
+    if len(text) <= max_len:
+        return text
+    return text[:max_len] + f" …[+{len(text)-max_len} chars]"
 
 
 @dataclass
@@ -88,8 +109,8 @@ class AgentSpan:
             "tool_events": [
                 {
                     "tool":   e.tool,
-                    "input":  e.input,
-                    "output": e.output,
+                    "input":  _truncate(e.input),
+                    "output": _truncate(e.output),
                     "error":  e.error,
                 }
                 for e in self.tool_events
@@ -97,7 +118,7 @@ class AgentSpan:
             "llm_events": [
                 {
                     "call":          e.call_index,
-                    "text":          e.text,
+                    "action":        _clean_llm_text(e.text),
                     "input_tokens":  e.input_tokens,
                     "output_tokens": e.output_tokens,
                 }
@@ -141,42 +162,48 @@ class TraceCallback(BaseCallbackHandler):
 
     def on_tool_start(self, serialized: dict, input_str: str, **kwargs: Any) -> None:
         tool_name = serialized.get("name", "unknown_tool")
-        logger.debug("[%s → Tool] %s  args=%s", self._span.agent, tool_name, input_str.strip())
-        self._span.tool_events.append(ToolEvent(tool=tool_name, input=input_str.strip()))
+        agent_name = self._span.agent.upper()
+        inp_clean = input_str.strip()
+        preview = inp_clean[:150] + (" …" if len(inp_clean) > 150 else "")
+        logger.debug("[%s Tool] %s(%s)", agent_name, tool_name, preview)
+        self._span.tool_events.append(ToolEvent(tool=tool_name, input=inp_clean))
 
     def on_tool_end(self, output: Any, **kwargs: Any) -> None:
         output_str = output.content if hasattr(output, "content") else str(output)
+        agent_name = self._span.agent.upper()
         preview = output_str if len(output_str) <= 300 else output_str[:300] + " …[truncated]"
-        logger.debug("[Tool → %s] %s", self._span.agent, preview)
+        logger.debug("[%s Result] %s", agent_name, preview.replace("\n", " "))
         if self._span.tool_events:
             self._span.tool_events[-1].output = output_str
 
     def on_tool_error(self, error: BaseException, **kwargs: Any) -> None:
         err = str(error)
-        logger.error("[%s ToolError] %s", self._span.agent, err)
+        agent_name = self._span.agent.upper()
+        logger.error("[%s ToolError] %s", agent_name, err)
         if self._span.tool_events:
             self._span.tool_events[-1].error = err
 
     def on_llm_end(self, response: Any, **kwargs: Any) -> None:
         self._span._llm_call_index += 1
+        agent_name = self._span.agent.upper()
         text = ""
         try:
             text = response.generations[0][0].text.strip()
-            preview = text if len(text) <= 400 else text[:400] + " …[truncated]"
-            logger.debug("[%s thinking #%d] %s", self._span.agent, self._span._llm_call_index, preview)
+            # Clean <think> tags so the terminal output isn't flooded with raw reasoning
+            action_preview = _clean_llm_text(text)
+            logger.debug("[%s LLM #%d] %s", agent_name, self._span._llm_call_index, action_preview.replace("\n", " "))
         except Exception:
             pass
 
         usage = (response.llm_output or {}).get("token_usage", {})
         in_tok  = int(usage.get("prompt_tokens",     0))
         out_tok = int(usage.get("completion_tokens", 0))
+        
+        running_in = sum(e.input_tokens for e in self._span.llm_events) + in_tok
+        running_out = sum(e.output_tokens for e in self._span.llm_events) + out_tok
         logger.debug(
-            "[%s tokens] call #%d — in=%d out=%d  (running: in=%d out=%d)",
-            self._span.agent,
-            self._span._llm_call_index,
-            in_tok, out_tok,
-            sum(e.input_tokens  for e in self._span.llm_events) + in_tok,
-            sum(e.output_tokens for e in self._span.llm_events) + out_tok,
+            "[%s Tokens #%d] in=%d out=%d  (total=%d)",
+            agent_name, self._span._llm_call_index, in_tok, out_tok, running_in + running_out
         )
         self._span.llm_events.append(LLMEvent(
             call_index=self._span._llm_call_index,
@@ -191,7 +218,7 @@ class PipelineTrace:
     """
     Collects all agent spans for one test invocation.
     One PipelineTrace per test; each agent appends its span via start_span().
-    Serialised to JSONL by TraceWriter; span dicts also stored in RepairState.
+    Span dicts are stored in RepairState and written to raw traces directory.
     """
 
     session_id: str

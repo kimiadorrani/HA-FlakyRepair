@@ -1,0 +1,214 @@
+<mxfile host="app.diagrams.net" modified="2026-05-05T00:00:00Z" agent="Claude" version="24.7.17">
+  <diagram id="ha-flakyrepair-architecture" name="HA-FlakyRepair Architecture">
+    <mxGraphModel dx="1420" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="960" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ══════════════════════════════════════════════════════
+             MAIN PIPELINE  (horizontal, y = 120–190)
+             ══════════════════════════════════════════════════════ -->
+
+        <!-- Input -->
+        <mxCell id="input" value="IDoFT Dataset&#xa;(flaky test instance)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="30" y="125" width="155" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Orchestrator -->
+        <mxCell id="orch" value="Orchestrator&#xa;(LangGraph)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d9ead3;strokeColor=#5b7f57;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="230" y="125" width="155" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Detection Agent header box -->
+        <mxCell id="det_hdr" value="Detection Agent&#xa;(ReAct)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#cfe2f3;strokeColor=#4f81a7;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="435" y="125" width="170" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Decision diamond -->
+        <mxCell id="diamond" value="Reproduced?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="660" y="108" width="125" height="95" as="geometry"/>
+        </mxCell>
+
+        <!-- Repair Agent header box -->
+        <mxCell id="rep_hdr" value="Repair Agent&#xa;(ReAct)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#bf9000;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="850" y="125" width="170" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- END — fixed -->
+        <mxCell id="end_ok" value="END&#xa;patch · is_fixed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1075" y="125" width="145" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- END — not reproduced -->
+        <mxCell id="end_no" value="END&#xa;not reproduced" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="660" y="265" width="145" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Result Logger -->
+        <mxCell id="rl_box" value="Result Logger" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1285" y="125" width="160" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Result Logger file list -->
+        <mxCell id="rl_f1" value="detection/&lt;project&gt;.json" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="195" width="210" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="rl_f2" value="repair/&lt;project&gt;.json" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="215" width="210" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="rl_f3" value="summary.json" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="235" width="210" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="rl_f4" value="traces/detection/ · traces/repair/" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="255" width="220" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- ══════════════════════════════════════════════════════
+             DETECTION AGENT INTERNALS  (y = 310–660)
+             ══════════════════════════════════════════════════════ -->
+
+        <!-- Docker background -->
+        <mxCell id="det_docker" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;opacity=25;" vertex="1" parent="1">
+          <mxGeometry x="405" y="305" width="235" height="355" as="geometry"/>
+        </mxCell>
+        <mxCell id="det_docker_lbl" value="Docker Container" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=11;fontStyle=3;fontColor=#4f81a7;" vertex="1" parent="1">
+          <mxGeometry x="405" y="308" width="235" height="18" as="geometry"/>
+        </mxCell>
+
+        <!-- ReAct loop label -->
+        <mxCell id="det_react" value="ReAct investigation loop" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#cfe2f3;strokeColor=#4f81a7;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="332" width="205" height="32" as="geometry"/>
+        </mxCell>
+
+        <!-- Detection tools -->
+        <mxCell id="det_t1" value="run_solo()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4f81a7;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="420" y="378" width="205" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="det_t2" value="run_repeated_in_process(n)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4f81a7;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="420" y="414" width="205" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="det_t3" value="run_isolated_reruns(n)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4f81a7;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="420" y="450" width="205" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="det_t4" value="run_suite_randomized(seed)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4f81a7;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="420" y="486" width="205" height="28" as="geometry"/>
+        </mxCell>
+
+        <!-- Detection output -->
+        <mxCell id="det_out" value="Output: flaky_type · root_cause_analysis&#xa;failing_log · execution_profiles" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=11;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="405" y="525" width="235" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- Behavioral pattern note -->
+        <mxCell id="det_note" value="Classifies: STATE_POLLUTION · ISOLATED_UNSTABLE&#xa;EXECUTION_ORDER_SENSITIVE · BRITTLE_SETUP_DEPENDENT" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=10;fontColor=#4f81a7;" vertex="1" parent="1">
+          <mxGeometry x="405" y="563" width="235" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- ══════════════════════════════════════════════════════
+             REPAIR AGENT INTERNALS  (y = 310–700)
+             ══════════════════════════════════════════════════════ -->
+
+        <!-- Docker background -->
+        <mxCell id="rep_docker" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;opacity=30;" vertex="1" parent="1">
+          <mxGeometry x="820" y="305" width="235" height="395" as="geometry"/>
+        </mxCell>
+        <mxCell id="rep_docker_lbl" value="Docker Container" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=11;fontStyle=3;fontColor=#bf9000;" vertex="1" parent="1">
+          <mxGeometry x="820" y="308" width="235" height="18" as="geometry"/>
+        </mxCell>
+
+        <!-- ReAct loop label -->
+        <mxCell id="rep_react" value="ReAct fix loop  (up to 3 write→verify)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#bf9000;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="835" y="332" width="205" height="32" as="geometry"/>
+        </mxCell>
+
+        <!-- Repair tools -->
+        <mxCell id="rep_t1" value="list_files(directory)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#bf9000;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="835" y="378" width="205" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rep_t2" value="read_file(path)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#bf9000;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="835" y="414" width="205" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rep_t3" value="write_file(path, content)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#bf9000;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="835" y="450" width="205" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rep_t4" value="run_verification()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#bf9000;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="835" y="486" width="205" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="rep_t5" value="get_diff()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#bf9000;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="835" y="522" width="205" height="28" as="geometry"/>
+        </mxCell>
+
+        <!-- Repair output -->
+        <mxCell id="rep_out" value="Output: patch · patch_target · files_modified&#xa;fix_summary · is_fixed · fix_attempts" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=11;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="820" y="561" width="235" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- Failure memory note -->
+        <mxCell id="rep_mem" value="Prompt enriched with failed attempt history&#xa;on each write→verify retry" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="835" y="603" width="205" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- ══════════════════════════════════════════════════════
+             EDGES
+             ══════════════════════════════════════════════════════ -->
+
+        <!-- Input → Orchestrator -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=blockThin;strokeWidth=2;strokeColor=#555555;" edge="1" source="input" target="orch" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Orchestrator → Detection Agent -->
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=blockThin;strokeWidth=2;strokeColor=#555555;" edge="1" source="orch" target="det_hdr" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Detection Agent → Diamond -->
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=blockThin;strokeWidth=2;strokeColor=#555555;" edge="1" source="det_hdr" target="diamond" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Diamond → Repair Agent  [Yes] -->
+        <mxCell id="e4" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=blockThin;strokeWidth=2;strokeColor=#274e13;fontColor=#274e13;fontStyle=1;fontSize=12;" edge="1" source="diamond" target="rep_hdr" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Diamond → END not reproduced  [No] -->
+        <mxCell id="e5" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=blockThin;strokeWidth=2;strokeColor=#b85450;fontColor=#b85450;fontStyle=1;fontSize=12;" edge="1" source="diamond" target="end_no" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Repair Agent → END fixed -->
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=blockThin;strokeWidth=2;strokeColor=#555555;" edge="1" source="rep_hdr" target="end_ok" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- END fixed → Result Logger -->
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=blockThin;strokeWidth=2;strokeColor=#9673a6;" edge="1" source="end_ok" target="rl_box" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- END not reproduced → Result Logger  [dashed] -->
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=blockThin;strokeWidth=1.5;strokeColor=#9673a6;dashed=1;" edge="1" source="end_no" target="rl_box" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="732" y="340"/>
+              <mxPoint x="1365" y="340"/>
+              <mxPoint x="1365" y="185"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Detection Agent header → Detection tools  [dashed] -->
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=blockThin;strokeWidth=1.5;strokeColor=#4f81a7;dashed=1;" edge="1" source="det_hdr" target="det_react" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Repair Agent header → Repair tools  [dashed] -->
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=blockThin;strokeWidth=1.5;strokeColor=#bf9000;dashed=1;" edge="1" source="rep_hdr" target="rep_react" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

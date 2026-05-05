@@ -34,7 +34,7 @@ from dotenv import load_dotenv
 from src.agents.repair import repair_agent_node
 from src.orchestrator import build_graph
 from src.tools.result_logger import ResultLogger, RESULTS_DIR
-from src.tools.docker_runner import reset_docker_environment
+from src.tools.docker_infra import reset_docker_environment
 
 logging.basicConfig(
     level=logging.INFO,

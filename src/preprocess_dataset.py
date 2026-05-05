@@ -32,7 +32,7 @@ from src.data.idoft.preprocess.export_reproducible_csv import (
 from src.data.idoft.preprocess.fetch_workspaces import clone_missing_repos, iter_unique_repos
 from src.main import DATA_FILE, PROJECT_ROOT, get_available_workspaces, load_dataset
 from src.orchestrator import build_graph
-from src.tools.docker_runner import reset_docker_environment
+from src.tools.docker_infra import reset_docker_environment
 from src.tools.result_logger import ResultLogger
 
 

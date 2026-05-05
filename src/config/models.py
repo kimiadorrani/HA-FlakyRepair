@@ -26,31 +26,6 @@ logger = logging.getLogger(__name__)
 
 _CONFIG_FILE = Path(__file__).parent.parent.parent / "models.json"
 
-_BUILT_IN: dict[str, dict[str, Any]] = {
-    "minimax": {
-        "name": "MiniMax-M2.7",
-        "provider": "openai-compat",
-        "base_url": "https://api.minimax.io/v1",
-        "api_key_env": "MINIMAX_API_KEY",
-        "temperature": 0.2,
-        "max_tokens": 4096,
-    },
-    "gpt-4o": {
-        "name": "gpt-4o",
-        "provider": "openai",
-        "api_key_env": "OPENAI_API_KEY",
-        "temperature": 0.2,
-        "max_tokens": 4096,
-    },
-    "gpt-4o-mini": {
-        "name": "gpt-4o-mini",
-        "provider": "openai",
-        "api_key_env": "OPENAI_API_KEY",
-        "temperature": 0.2,
-        "max_tokens": 2048,
-    },
-}
-
 
 @dataclass
 class ModelConfig:
@@ -62,7 +37,7 @@ class ModelConfig:
     base_url: str | None = None   # required for openai-compat endpoints
     api_key_env: str = "OPENAI_API_KEY"
     temperature: float = 0.2
-    max_tokens: int = 4096
+    max_tokens: int = 32768
     extra: dict[str, Any] = field(default_factory=dict)
 
     def make_llm(self) -> Any:
@@ -97,17 +72,18 @@ class ModelConfig:
 
 
 def _load_all() -> dict[str, dict[str, Any]]:
-    """Merge built-in presets with models.json (file entries win on conflict)."""
-    merged = dict(_BUILT_IN)
-    if _CONFIG_FILE.exists():
-        try:
-            with _CONFIG_FILE.open(encoding="utf-8") as f:
-                data = json.load(f)
-            for k, v in data.get("models", {}).items():
-                merged[k] = v
-        except Exception as exc:
-            logger.warning("Could not load %s: %s", _CONFIG_FILE.name, exc)
-    return merged
+    """Load all model configurations strictly from models.json."""
+    if not _CONFIG_FILE.exists():
+        logger.warning("Configuration file %s not found!", _CONFIG_FILE.name)
+        return {}
+
+    try:
+        with _CONFIG_FILE.open(encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("models", {})
+    except Exception as exc:
+        logger.error("Failed to load %s: %s", _CONFIG_FILE.name, exc)
+        return {}
 
 
 def get_model(key: str) -> ModelConfig:

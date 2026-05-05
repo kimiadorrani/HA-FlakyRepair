@@ -195,7 +195,7 @@ By category:
 The main pipeline runs two LangGraph agents in sequence:
 
 1. **Detection Agent** — reproduces flakiness inside Docker and classifies the root cause (NIO, NOD, OD-Vic, OD-Brit).
-2. **Repair Agent** — reads the root cause, navigates the repo, writes a fix, and verifies it — all inside the container. The host workspace is never modified.
+2. **Repair Agent** — reads the root cause, navigates the repo, writes a fix, and verifies it — all inside the container. The host workspace is never modified. Repair is capped at `REPAIR_TIMEOUT_SECONDS` (default **800s**); tests that exceed this limit are marked `is_fixed: false` with a timeout summary and skipped without blocking the rest of the run.
 
 ```
 START → detection_agent → (reproduced?) → repair_agent → END
@@ -290,6 +290,7 @@ results/
 | `fix_summary` | One-line description of what was changed and why |
 | `fix_attempts` | Number of write→verify iterations used |
 | `patch` | Unified diff of all changes (from `git diff` inside the container) |
+| `repair_error` | Non-null if setup failed or the agent was timed out |
 
 #### CLI Reference
 
@@ -317,6 +318,7 @@ Available model keys are defined in `models.json` at the project root.
 - Both runners use targeted `git fetch origin <sha>` for shallow clones instead of `git fetch --all`, which avoids the most common checkout failure.
 - The LangGraph pipeline builds a per-project Docker image (heavier, but bakes in all deps). The image is reused across detection and repair for the same project.
 - The repair agent writes all fixes inside the Docker container. The `workspaces/idoft/` directory on the host is never modified.
+- Repair has a hard wall-clock timeout of **800 seconds** per test (configurable via `REPAIR_TIMEOUT_SECONDS` in `src/agents/repair.py`). Tests that time out are logged as not fixed and the run continues normally.
 
 ## Documentation
 - Main Architecture overview: `docs/Architecture.md`

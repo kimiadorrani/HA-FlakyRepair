@@ -26,7 +26,8 @@ from langgraph.prebuilt import create_react_agent
 
 from src.config.models import get_model
 from src.state import RepairState
-from src.tools.docker_runner import make_detection_tools, cleanup_project_container
+from src.tools.detection_tools import make_detection_tools
+from src.tools.docker_infra import cleanup_project_container
 from src.tracing.agent_trace import PipelineTrace, TraceCallback
 
 logger = logging.getLogger(__name__)
@@ -163,6 +164,7 @@ def detection_agent_node(state: RepairState, config: RunnableConfig | None = Non
                             "project": project_name,
                             "test_name": test_name,
                             "model": model_cfg.name,
+                            "commit_sha": sha,
                         },
                     },
                 )
