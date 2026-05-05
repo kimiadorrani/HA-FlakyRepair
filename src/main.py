@@ -14,6 +14,8 @@ Usage examples:
 
   python -m src.main --project bottle-neck
 
+  python -m src.main --project PyGraph cloudnetpy compare-mt coo
+
   python -m src.main --test test_router_register_handler_fn_pass
 
   python -m src.main --category NIO
@@ -63,7 +65,7 @@ def get_available_workspaces() -> set[str]:
 def load_dataset(
     available_projects: set[str],
     data_file: str = MERGED_CSV,
-    project_filter: str | None = None,
+    project_filter: list[str] | None = None,
     skip_projects: set[str] | None = None,
     test_filter: str | None = None,
     category_filter: str | None = None,
@@ -122,7 +124,7 @@ def load_dataset(
             if reproduced_only and reproduced_value != "true":
                 continue
 
-            if project_filter and project_name.lower() != project_filter.lower():
+            if project_filter and project_name.lower() not in {p.lower() for p in project_filter}:
                 continue
             if test_filter and test_filter.lower() not in test_name.lower():
                 continue
@@ -160,8 +162,8 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    parser.add_argument("--project", "-p", metavar="NAME",
-                        help="Only run tests from this project")
+    parser.add_argument("--project", "-p", metavar="NAME", nargs="+",
+                        help="Only run tests from these project(s) (space-separated)")
     parser.add_argument("--test", "-t", metavar="PATTERN",
                         help="Only run tests whose name contains this string")
     parser.add_argument("--category", "-c", metavar="CATEGORY",

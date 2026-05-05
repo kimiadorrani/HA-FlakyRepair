@@ -66,6 +66,14 @@ def _clone_and_checkout(repo_url: str, commit_sha: str, project_dir: str) -> Non
                 ["git", "fetch", "origin", "--depth", "50", "--update-shallow"],
                 cwd=project_dir, capture_output=True,
             )
+        still_missing = subprocess.run(
+            ["git", "cat-file", "-e", commit_sha], cwd=project_dir, capture_output=True
+        ).returncode != 0
+        if still_missing:
+            subprocess.run(
+                ["git", "fetch", "origin", "--unshallow"],
+                cwd=project_dir, capture_output=True,
+            )
 
     subprocess.run(
         ["git", "checkout", "-f", commit_sha],
@@ -83,13 +91,14 @@ def _build_project_image(project_name: str, project_dir: str) -> str:
     logger.info("Building Docker image %s …", tag)
     dockerfile_content = """\
 FROM python:3.8-slim
-RUN apt-get update && apt-get install -y git build-essential pkg-config libhdf5-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y git build-essential pkg-config libhdf5-dev libxml2-dev libxslt-dev && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY . /app
-RUN pip install "pip<24.1"
-RUN pip install "pipenv==2020.11.15"
-RUN if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-RUN if [ -f setup.py ]; then pip install -e .; elif [ -f pyproject.toml ]; then pip install -e . || pip install .; fi
+RUN pip install --timeout 120 "pip<24.1"
+RUN pip install --timeout 120 "pipenv==2020.11.15"
+RUN pip install --timeout 120 "setuptools" "wheel" "poetry" "poetry-core"
+RUN if [ -f requirements.txt ]; then pip install --timeout 120 -r requirements.txt; fi
+RUN if [ -f setup.py ]; then pip install --no-build-isolation -e .; elif [ -f pyproject.toml ]; then pip install --no-build-isolation -e . || pip install --no-build-isolation .; fi
 RUN python -c "import pytest" >/dev/null 2>&1 || pip install "pytest<8"
 RUN pip install "pytest-repeat<0.9.4"
 RUN pip install pytest-randomly

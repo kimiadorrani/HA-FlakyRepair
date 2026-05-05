@@ -65,6 +65,7 @@ class ResultLogger:
 
     def log_result(self, project_name: str, state: dict) -> None:
         """Append one test result to the project JSON file and update aggregates."""
+        os.makedirs(self.session_dir, exist_ok=True)
         filepath = os.path.join(self.session_dir, f"{project_name}.json")
 
         if os.path.exists(filepath):
