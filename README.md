@@ -190,72 +190,133 @@ By category:
 
 ---
 
-### LangGraph Detection Pipeline
+### LangGraph Detection + Repair Pipeline
+
+The main pipeline runs two LangGraph agents in sequence:
+
+1. **Detection Agent** — reproduces flakiness inside Docker and classifies the root cause (NIO, NOD, OD-Vic, OD-Brit).
+2. **Repair Agent** — reads the root cause, navigates the repo, writes a fix, and verifies it — all inside the container. The host workspace is never modified.
+
+```
+START → detection_agent → (reproduced?) → repair_agent → END
+                        ↘ (not reproduced) → END
+```
 
 #### End-to-End
 
 ```bash
 .venv/bin/python -m src.preprocess_dataset
-.venv/bin/python -m src.main --input-csv datasets/idoft/preprocessed/py-data-reproducible.csv
+.venv/bin/python -m src.main
 ```
 
-This gives you:
-- a cleaned preprocessing CSV at `datasets/idoft/preprocessed/py-data-reproducible.csv`
-- a preprocessing report at `datasets/idoft/preprocessed/preprocess-report.json`
-- detection results under `results/`
-
-#### Step-by-Step
-
-##### 1. Preprocess The Dataset
+#### Common Invocations
 
 ```bash
-.venv/bin/python -m src.preprocess_dataset
+# Single project — full pipeline
+.venv/bin/python -m src.main --project plcx
+
+# Multiple projects at once
+.venv/bin/python -m src.main --project plcx yamicache multiindex
+
+# Detection only (skip repair)
+.venv/bin/python -m src.main --no-repair
+
+# Different models for each agent
+.venv/bin/python -m src.main --detection-model minimax --repair-model gpt-4o
+
+# Filter by flaky category
+.venv/bin/python -m src.main --category NIO
+
+# Limit to N projects
+.venv/bin/python -m src.main --limit 5
+
+# Include tests not marked as reproduced in the dataset
+.venv/bin/python -m src.main --include-not-reproduced
 ```
 
-Outputs:
+#### Run Repair on Existing Detection Results
 
-```text
-datasets/idoft/preprocessed/py-data-reproducible.csv
-datasets/idoft/preprocessed/preprocess-report.json
-```
-
-Each row is annotated with: `Preprocess Status`, `Reproduced`, `Preprocess Error`,
-`Selected Profile`, `CPU Limit`, `Memory Limit`, `Pass Count`, `Fail Count`, `Outcome Profile`.
-
-##### 2. Run Detection
+If you already have detection results from a previous session, you can run the repair agent directly without re-running detection:
 
 ```bash
-.venv/bin/python -m src.main --input-csv datasets/idoft/preprocessed/py-data-reproducible.csv
+.venv/bin/python -m src.main --from-detection results/2026-05-05_09-52-56
+
+# Limit to specific projects from that session
+.venv/bin/python -m src.main --from-detection results/2026-05-05_09-52-56 --project plcx
+
+# You can also pass just the session ID
+.venv/bin/python -m src.main --from-detection 2026-05-05_09-52-56
 ```
 
-To include rows that could not be reproduced:
+Repair results are written into the same session directory under `repair/`, alongside the existing `detection/` output.
 
-```bash
-.venv/bin/python -m src.main --input-csv datasets/idoft/preprocessed/py-data-reproducible.csv --include-not-reproduced
+#### Result Directory Layout
+
+```
+results/
+  2026-05-05_09-52-56/
+    detection/
+      plcx.json            detection output per project
+      yamicache.json
+      ...
+    repair/
+      plcx.json            repair output per project (only if repair ran)
+      ...
+    traces/
+      detection/
+        plcx.jsonl         one JSON line per test — detection agent spans
+      repair/
+        plcx.jsonl         one JSON line per test — repair agent spans
+    summary.json           session-wide aggregates (detection + repair counts)
 ```
 
-##### 3. Filters
+**Detection JSON fields** (per test):
 
-```bash
-.venv/bin/python -m src.main --project bottle-neck
-.venv/bin/python -m src.main --category NOD
-.venv/bin/python -m src.main --limit 3
-```
+| Field | Description |
+|---|---|
+| `is_flakiness_reproduced` | `true` if the agent confirmed flakiness |
+| `flaky_type` | Detected category: `NIO`, `NOD`, `OD-Vic`, `OD-Brit` |
+| `root_cause_analysis` | Agent's explanation of why the test is flaky |
+| `failing_log` | Captured output from a failing run |
+| `execution_profiles` | Compact record of which strategies were run (used by repair for replay) |
 
-Export reproduced tests from an existing results session:
+**Repair JSON fields** (per test):
 
-```bash
-.venv/bin/python -m src.data.idoft.preprocess.export_reproducible_csv --session 2026-03-24_14-35-48
-```
+| Field | Description |
+|---|---|
+| `is_fixed` | `true` if verification confirmed the fix eliminates flakiness |
+| `patch_target` | `source`, `test`, or `both` |
+| `files_modified` | Repo-relative paths of changed files |
+| `fix_summary` | One-line description of what was changed and why |
+| `fix_attempts` | Number of write→verify iterations used |
+| `patch` | Unified diff of all changes (from `git diff` inside the container) |
+
+#### CLI Reference
+
+| Flag | Default | Description |
+|---|---|---|
+| `--project NAME [...]` | all | Filter to one or more projects |
+| `--category CAT` | all | Filter by flaky type (NIO, NOD, OD-Vic, OD-Brit) |
+| `--limit N` | none | Stop after N projects |
+| `--detection-model KEY` | `minimax` | Model for the Detection Agent |
+| `--repair-model KEY` | `minimax` | Model for the Repair Agent |
+| `--no-repair` | off | Run detection only |
+| `--from-detection DIR` | — | Skip detection; repair from saved session |
+| `--include-not-reproduced` | off | Include dataset rows not marked as reproduced |
+| `--shuffle` | off | Randomise test order before applying `--limit` |
+| `--input-csv PATH` | merged CSV | Alternative dataset CSV |
+
+Available model keys are defined in `models.json` at the project root.
 
 ---
 
 ### Notes
 
 - OD rows are skipped by default in the non-OD batch runner (`run_idoft_batch.py`). Use the dedicated OD runner for those.
-- Both runners mount each repo as a Docker volume and reuse one container per project — install dependencies once, run all tests, then remove the container.
+- Both standalone runners mount each repo as a Docker volume and reuse one container per project — install dependencies once, run all tests, then remove the container.
 - Both runners use targeted `git fetch origin <sha>` for shallow clones instead of `git fetch --all`, which avoids the most common checkout failure.
-- The LangGraph pipeline builds a per-project Docker image (heavier, but bakes in all deps).
+- The LangGraph pipeline builds a per-project Docker image (heavier, but bakes in all deps). The image is reused across detection and repair for the same project.
+- The repair agent writes all fixes inside the Docker container. The `workspaces/idoft/` directory on the host is never modified.
 
 ## Documentation
 - Main Architecture overview: `docs/Architecture.md`

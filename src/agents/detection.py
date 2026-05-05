@@ -21,6 +21,7 @@ import re
 from typing import Any
 
 from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.runnables import RunnableConfig
 from langgraph.prebuilt import create_react_agent
 
 from src.config.models import get_model
@@ -94,7 +95,7 @@ When your investigation is complete, output ONLY valid JSON with no extra text:
 }"""
 
 
-def detection_agent_node(state: RepairState, config: dict | None = None) -> dict:
+def detection_agent_node(state: RepairState, config: RunnableConfig | None = None) -> dict:
     """LangGraph node: runs the ReAct detection agent for one test."""
     test_name    = state.get("test_name", "unknown")
     project_url  = state.get("project_url", "unknown")

@@ -34,11 +34,17 @@ class RepairState(TypedDict):
     agent_trace:              list[dict[str, Any]]
     token_usage:              dict[str, Any]
 
-    # Repair phase (future agents)
-    code_context:      str | None
-    current_patch:     str | None
-    validation_result: str | None
-    rotation_count:    int
+    # Repair Agent inputs / config
+    repair_model: str          # model key for Repair Agent (default: "minimax")
+
+    # Repair Agent output
+    patch:          str | None   # unified diff of all changes made
+    patch_target:   str | None   # "source" | "test" | "both"
+    files_modified: list[str]    # repo-relative paths of changed files
+    fix_summary:    str | None   # one-line human description of the fix
+    is_fixed:       bool         # True if verification confirmed flakiness is gone
+    fix_attempts:   int          # number of write→verify iterations used
+    repair_error:   str | None   # set if repair could not run at all
 
     # Structured per-agent spans — each agent appends its span dict via operator.add
     # Use src.tracing.agent_trace.AgentSpan.to_dict() format

@@ -417,3 +417,138 @@ def make_detection_tools(
         return _tool_result(profile)
 
     return [run_solo, run_repeated_in_process, run_isolated_reruns, run_suite_randomized], execution_log
+
+
+# ── Repair helpers ─────────────────────────────────────────────────────────
+
+def _find_reproducing_profile(execution_profiles: list[dict]) -> Optional[dict]:
+    """Return the profile that best demonstrated flakiness (mixed > failing)."""
+    for p in reversed(execution_profiles):
+        if p.get("pass_count", 0) > 0 and p.get("fail_count", 0) > 0:
+            return p
+    for p in reversed(execution_profiles):
+        if p.get("fail_count", 0) > 0:
+            return p
+    return None
+
+
+def _replay_profile(container_name: str, test_name: str, profile: dict) -> dict:
+    """Re-run the same strategy that originally reproduced the flakiness."""
+    name = profile.get("name", "")
+    if name == "solo":
+        return _run_solo(container_name, test_name)
+    if name == "repeated_in_process":
+        return _run_repeated(container_name, test_name, n=50)
+    if name == "isolated_reruns":
+        return _run_isolated(container_name, test_name, n=20)
+    if name.startswith("suite_randomized_seed"):
+        seed_str = name.replace("suite_randomized_seed", "")
+        seed = int(seed_str) if seed_str.isdigit() else 1
+        return _run_suite_randomized(container_name, test_name, seed)
+    return _run_solo(container_name, test_name)
+
+
+def make_repair_tools(
+    project_url: str,
+    sha_detected: str,
+    test_name: str,
+    execution_profiles: list[dict],
+) -> Tuple[list, list]:
+    """
+    Set up Docker environment for the repair agent and return (tools, repair_log).
+
+    The container is a fresh instance of the already-built image — the host
+    workspace is never touched. All file writes go to /app/ inside the container.
+
+    tools      — five LangChain tools for file I/O and verification
+    repair_log — mutable list; each verify call appends its profile dict
+    """
+    project_name = project_url.rstrip("/").split("/")[-1]
+    project_dir  = os.path.join(WORKSPACE_DIR, project_name)
+
+    _clone_and_checkout(project_url, sha_detected, project_dir)
+    image_tag      = _build_project_image(project_name, project_dir)
+    container_name = _ensure_repo_container(image_tag, project_name, sha_detected)
+
+    reproducing_profile = _find_reproducing_profile(execution_profiles)
+    repair_log: list[dict] = []
+
+    @tool
+    def list_files(directory: str = ".") -> str:
+        """
+        List Python source files inside the repo.
+        directory is relative to the repo root (e.g. '.' or 'src/mypackage').
+        """
+        safe_dir = directory.lstrip("/").replace("..", "").strip() or "."
+        result = _docker_exec(
+            container_name,
+            [
+                "find", f"/app/{safe_dir}",
+                "-type", "f", "-name", "*.py",
+                "-not", "-path", "*/.*",
+                "-not", "-path", "*/__pycache__/*",
+            ],
+            timeout=30,
+        )
+        lines = [ln.replace("/app/", "", 1) for ln in result.stdout.strip().splitlines()]
+        return "\n".join(lines[:150]) or "No Python files found."
+
+    @tool
+    def read_file(file_path: str) -> str:
+        """
+        Read a file from the repo (line-numbered output).
+        file_path is relative to the repo root (e.g. 'src/foo.py').
+        """
+        safe_path = file_path.lstrip("/").replace("..", "").strip()
+        result = _docker_exec(container_name, ["cat", f"/app/{safe_path}"], timeout=30)
+        if result.returncode != 0:
+            return f"Error reading '{safe_path}': {result.stdout.strip()}"
+        lines = result.stdout.splitlines()
+        return "\n".join(f"{i+1:4}: {ln}" for i, ln in enumerate(lines))
+
+    @tool
+    def write_file(file_path: str, content: str) -> str:
+        """
+        Overwrite a file inside the repo with new content.
+        file_path is relative to the repo root.
+        Provide the COMPLETE file content, not just changed lines.
+        """
+        safe_path = file_path.lstrip("/").replace("..", "").strip()
+        full_path = f"/app/{safe_path}"
+        try:
+            result = subprocess.run(
+                ["docker", "exec", "-i", container_name,
+                 "sh", "-c", f"cat > {full_path}"],
+                input=content, text=True,
+                capture_output=True, timeout=30,
+            )
+            if result.returncode != 0:
+                return f"Error writing '{safe_path}': {result.stderr.strip()}"
+            return f"Wrote {safe_path} successfully."
+        except subprocess.TimeoutExpired:
+            return f"Timeout writing '{safe_path}'."
+
+    @tool
+    def run_verification() -> str:
+        """
+        Re-run the exact strategy that originally reproduced the flakiness.
+        If fail_count is 0 in the result, the fix is verified.
+        """
+        if reproducing_profile:
+            profile = _replay_profile(container_name, test_name, reproducing_profile)
+        else:
+            profile = _run_solo(container_name, test_name)
+        repair_log.append(profile)
+        return _tool_result(profile)
+
+    @tool
+    def get_diff() -> str:
+        """
+        Return the unified git diff of all changes made inside the container so far.
+        Call this once your fix is verified before producing the final JSON output.
+        """
+        result = _docker_exec(container_name, ["git", "diff"], timeout=30)
+        diff = result.stdout.strip()
+        return diff if diff else "No changes detected."
+
+    return [list_files, read_file, write_file, run_verification, get_diff], repair_log

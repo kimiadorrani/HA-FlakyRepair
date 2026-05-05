@@ -1,34 +1,29 @@
 """
 HA-FlakyRepair — Main Entry Point.
 
-Reads the merged IDoFT reproduction dataset, filters for tests whose
-repos exist in workspaces/idoft/, and runs each through the LangGraph
-detection pipeline. Results are saved per-project in timestamped folders.
-
-The merged dataset contains both OD and non-OD tests. The detection agent
-handles all categories (NIO, NOD, OD-Vic, OD-Brit) without requiring the
-category as input.
+Normal run  : detection → repair (for reproduced tests)
+Repair-only : --from-detection <session_dir>  skips detection, runs repair
+              on tests already confirmed as flaky in a previous session.
 
 Usage examples:
   python -m src.main
 
-  python -m src.main --project bottle-neck
+  python -m src.main --project plcx
 
   python -m src.main --project PyGraph cloudnetpy compare-mt coo
 
-  python -m src.main --test test_router_register_handler_fn_pass
+  python -m src.main --no-repair           # detection only
 
-  python -m src.main --category NIO
+  python -m src.main --from-detection results/2026-05-05_09-52-56
 
-  python -m src.main --limit 3
+  python -m src.main --from-detection results/2026-05-05_09-52-56 --project plcx
 
-  python -m src.main --project bottle-neck --category NIO --limit 2
-
-  python -m src.main --input-csv datasets/idoft/idoft-merged-reproduction-results.csv
+  python -m src.main --detection-model minimax --repair-model gpt-4o
 """
 
 import os
 import csv
+import json
 import logging
 import sys
 import argparse
@@ -36,8 +31,9 @@ import random
 
 from dotenv import load_dotenv
 
+from src.agents.repair import repair_agent_node
 from src.orchestrator import build_graph
-from src.tools.result_logger import ResultLogger
+from src.tools.result_logger import ResultLogger, RESULTS_DIR
 from src.tools.docker_runner import reset_docker_environment
 
 logging.basicConfig(
@@ -180,12 +176,179 @@ def parse_args() -> argparse.Namespace:
         "--detection-model", default="minimax", metavar="MODEL_KEY",
         help=f"Model key for the Detection Agent. Available: {list_models()} (default: minimax)",
     )
+    parser.add_argument(
+        "--repair-model", default="minimax", metavar="MODEL_KEY",
+        help=f"Model key for the Repair Agent. Available: {list_models()} (default: minimax)",
+    )
+    parser.add_argument(
+        "--no-repair", action="store_true", default=False,
+        help="Run detection only — skip the repair agent even when flakiness is reproduced",
+    )
+    parser.add_argument(
+        "--from-detection", metavar="SESSION_DIR", default=None,
+        help="Skip detection; run repair on reproduced tests from a previous session directory",
+    )
     return parser.parse_args()
 
 
-def run_detection_pipeline():
-    args = parse_args()
+# ── Repair-from-saved-detection ────────────────────────────────────────────
+
+def _get_project_url(project_name: str, saved_url: str) -> str:
+    """
+    Return the project's remote URL.  saved_url is used when present (new
+    format); otherwise the git remote of the workspace is read as a fallback
+    (old format where project_url was not persisted).
+    """
+    if saved_url:
+        return saved_url
+    workspace = os.path.join(WORKSPACE_DIR, project_name)
+    if os.path.isdir(workspace):
+        import subprocess as _sp
+        r = _sp.run(
+            ["git", "remote", "get-url", "origin"],
+            cwd=workspace, capture_output=True, text=True,
+        )
+        if r.returncode == 0:
+            return r.stdout.strip()
+    return ""
+
+
+def _load_detection_results(session_dir: str, project_filter: list[str] | None = None) -> list[dict]:
+    """
+    Load reproduced tests from a previous session's detection output.
+
+    Handles both the new layout (detection/<project>.json) and the legacy
+    flat layout (<project>.json at session root).
+    """
+    detection_dir = os.path.join(session_dir, "detection")
+    search_dir = detection_dir if os.path.isdir(detection_dir) else session_dir
+
+    tests = []
+    for fname in sorted(os.listdir(search_dir)):
+        if not fname.endswith(".json") or fname == "summary.json":
+            continue
+        project_name = fname[:-5]
+        if project_filter and project_name.lower() not in {p.lower() for p in project_filter}:
+            continue
+
+        with open(os.path.join(search_dir, fname)) as f:
+            data = json.load(f)
+
+        for t in data.get("tests", []):
+            if not t.get("is_flakiness_reproduced"):
+                continue
+            saved_url = t.get("project_url") or data.get("project_url", "")
+            project_url = _get_project_url(project_name, saved_url)
+            if not project_url:
+                logger.warning("Cannot resolve project_url for %s — skipping", project_name)
+                continue
+            tests.append({
+                "project_name":       project_name,
+                "project_url":        project_url,
+                "sha_detected":       t.get("sha_detected", ""),
+                "test_name":          t.get("test_name", ""),
+                "category":           t.get("category", []),
+                "flaky_type":         t.get("flaky_type"),
+                "root_cause_analysis": t.get("root_cause_analysis", ""),
+                "failing_log":        t.get("failing_log"),
+                "execution_profiles": t.get("execution_profiles", []),
+                "token_usage":        t.get("token_usage", {}),
+            })
+    return tests
+
+
+def run_repair_from_detection(args: argparse.Namespace) -> None:
+    """Run the repair agent against pre-computed detection results."""
     load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
+
+    session_dir = args.from_detection
+    if not os.path.isdir(session_dir):
+        # Allow bare session IDs like "2026-05-05_09-52-56"
+        session_dir = os.path.join(RESULTS_DIR, session_dir)
+    if not os.path.isdir(session_dir):
+        logger.error("Session directory not found: %s", session_dir)
+        return
+
+    tests = _load_detection_results(session_dir, project_filter=args.project)
+    if not tests:
+        logger.error("No reproduced tests found in %s", session_dir)
+        return
+
+    logger.info("Running repair on %d reproduced test(s) from %s", len(tests), session_dir)
+
+    # Reuse the existing session directory so repair/ lands next to detection/
+    session_id  = os.path.basename(session_dir.rstrip("/"))
+    result_logger = ResultLogger(session_id=session_id)
+
+    for i, t in enumerate(tests, 1):
+        logger.info("[%d/%d] %s :: %s", i, len(tests), t["project_name"], t["test_name"])
+
+        state = {
+            "session_id":             result_logger.session_id,
+            "detection_model":        args.detection_model,
+            "repair_model":           args.repair_model,
+            "dataset":                "IDoFT",
+            "language":               "python",
+            "build_system":           "pytest",
+            "project_url":            t["project_url"],
+            "sha_detected":           t["sha_detected"],
+            "module_path":            ".",
+            "test_name":              t["test_name"],
+            "category":               t["category"],
+            "passing_log":            None,
+            "failing_log":            t.get("failing_log"),
+            "is_flakiness_reproduced": True,
+            "error_message":          None,
+            "pass_count":             0,
+            "fail_count":             0,
+            "outcome_profile":        None,
+            "execution_profiles":     t.get("execution_profiles", []),
+            "flaky_type":             t.get("flaky_type"),
+            "root_cause_analysis":    t.get("root_cause_analysis", ""),
+            "agent_trace":            [],
+            "token_usage":            {},
+            "pipeline_trace":         [],
+            "patch":                  None,
+            "patch_target":           None,
+            "files_modified":         [],
+            "fix_summary":            None,
+            "is_fixed":               False,
+            "fix_attempts":           0,
+            "repair_error":           None,
+            "trajectory":             [],
+        }
+
+        invoke_config = {
+            "configurable": {
+                "repair_model": args.repair_model,
+            }
+        }
+
+        try:
+            final_state = repair_agent_node(state, config=invoke_config)
+            # Merge repair output back so log_repair_result can read all fields
+            state.update(final_state)
+        except Exception as e:
+            logger.error("Repair crashed for %s: %s", t["test_name"], e)
+            state["repair_error"] = f"Pipeline crash: {e}"
+
+        result_logger.log_repair_result(t["project_name"], state)
+        logger.info(
+            "→ fixed=%s | target=%s | files=%s",
+            state.get("is_fixed"),
+            state.get("patch_target"),
+            state.get("files_modified"),
+        )
+
+    result_logger.write_summary()
+    reset_docker_environment()
+    logger.info("Done. Repair results saved to: %s/repair/", result_logger.session_dir)
+
+
+def run_detection_pipeline(args: argparse.Namespace | None = None):
+    if args is None:
+        args = parse_args()
+        load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
     available = get_available_workspaces()
 
@@ -220,6 +383,8 @@ def run_detection_pipeline():
     invoke_config = {
         "configurable": {
             "detection_model": args.detection_model,
+            "repair_model":    args.repair_model,
+            "skip_repair":     args.no_repair,
         }
     }
 
@@ -229,6 +394,7 @@ def run_detection_pipeline():
         initial_state = {
             "session_id":             result_logger.session_id,
             "detection_model":        args.detection_model,
+            "repair_model":           args.repair_model,
             "dataset":                "IDoFT",
             "language":               "python",
             "build_system":           "pytest",
@@ -250,10 +416,13 @@ def run_detection_pipeline():
             "agent_trace":            [],
             "token_usage":            {},
             "pipeline_trace":         [],
-            "code_context":           None,
-            "current_patch":          None,
-            "validation_result":      None,
-            "rotation_count":         0,
+            "patch":                  None,
+            "patch_target":           None,
+            "files_modified":         [],
+            "fix_summary":            None,
+            "is_fixed":               False,
+            "fix_attempts":           0,
+            "repair_error":           None,
             "trajectory":             [],
         }
 
@@ -295,4 +464,9 @@ def run_detection_pipeline():
 
 
 if __name__ == "__main__":
-    run_detection_pipeline()
+    _args = parse_args()
+    load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
+    if _args.from_detection:
+        run_repair_from_detection(_args)
+    else:
+        run_detection_pipeline(_args)
