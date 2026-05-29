@@ -8,7 +8,9 @@ This directory is split by ownership:
 
 ## Shared
 
-- `shared/compute_detection_accuracy.py`: compare a detection session against the IDOFT ground-truth CSV.
+- `shared/evaluate_session.py`: compute all detection and repair metrics for a session. Prints a formatted table and writes `results/<session>/evaluation.json`. Supports `--compare` for side-by-side multi-session comparison.
+
+- `shared/compute_detection_accuracy.py`: legacy script — joins a detection session against the IDOFT ground-truth CSV. Superseded by `evaluate_session.py` for most use cases.
 
 ## IDOFT
 

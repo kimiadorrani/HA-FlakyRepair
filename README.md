@@ -320,6 +320,65 @@ Available model keys are defined in `models.json` at the project root.
 - The repair agent writes all fixes inside the Docker container. The `workspaces/idoft/` directory on the host is never modified.
 - Repair has a hard wall-clock timeout of **800 seconds** per test (configurable via `REPAIR_TIMEOUT_SECONDS` in `src/agents/repair.py`). Tests that time out are logged as not fixed and the run continues normally.
 
+---
+
+### Evaluation
+
+After any session completes, run the evaluation script to compute all defined metrics from the saved JSON files.
+
+```bash
+# Full report (table printed + evaluation.json saved next to detection/ and repair/)
+.venv/bin/python scripts/shared/evaluate_session.py --session 2026-05-05_09-52-56
+
+# Detection metrics only
+.venv/bin/python scripts/shared/evaluate_session.py --session 2026-05-05_09-52-56 --no-repair
+
+# JSON output only (no console table)
+.venv/bin/python scripts/shared/evaluate_session.py --session 2026-05-05_09-52-56 --format json
+
+# Compare two sessions side-by-side (e.g. MiniMax vs DeepSeek)
+.venv/bin/python scripts/shared/evaluate_session.py --session A --compare B
+```
+
+The script writes `results/<session>/evaluation.json` and, when `--compare` is used, prints a side-by-side comparison table.
+
+#### Detection metrics
+
+| Metric | Description |
+|---|---|
+| Reproduction rate | % of tests where the agent confirmed flaky behaviour |
+| Accuracy | % correct category predictions, among reproduced tests |
+| Precision / Recall / F1 | Per class (NIO, NOD, OD-Vic, OD-Brit) |
+| Confusion matrix | Actual vs predicted category counts |
+| Avg / total tokens | Input + output tokens per test and for the whole session |
+| Avg LLM calls | LLM invocations per test |
+| Avg / total duration | Wall-clock time per test and for the whole session |
+
+#### Repair metrics
+
+| Metric | Description |
+|---|---|
+| Fix rate | % of attempted repairs that verified as fixed |
+| Regression rate | % of fixed tests that broke other tests (`is_regression` field) |
+| Avg fix attempts | Iterations used per repair (fixed-only and across all attempts) |
+| Patch target distribution | Share of patches targeting `test` / `source` / `both` |
+| Lines added / removed | Avg and total diff lines across all repairs |
+| Avg / total tokens | Input + output tokens per repair and for the whole session |
+| Avg LLM calls | LLM invocations per repair |
+| Avg / total duration | Wall-clock time per repair and for the whole session |
+
+#### CLI reference
+
+| Flag | Default | Description |
+|---|---|---|
+| `--session SESSION_ID` | — | Session to evaluate (required) |
+| `--compare SESSION_ID [...]` | — | Additional sessions for side-by-side comparison |
+| `--no-repair` | off | Skip repair metrics |
+| `--format table\|json\|both` | `both` | Output format |
+| `--output PATH` | `results/<session>/evaluation.json` | Custom output path |
+
+---
+
 ## Documentation
 - Main Architecture overview: `docs/Architecture.md`
 - Dataset notes: `docs/README_IDoFT.md`
