@@ -13,6 +13,7 @@ import logging
 import os
 import re
 import subprocess
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ WORKSPACE_DIR = os.path.join(
 _built_images: set[str] = set()
 _prepared_checkouts: dict[str, str] = {}
 _active_repo_containers: dict[str, str] = {}
+_docker_lock = threading.Lock()
 
 
 # ── Image / container naming ───────────────────────────────────────────────
@@ -41,6 +43,11 @@ def _repo_container_name(project_name: str, commit_sha: str) -> str:
 # ── Git helpers ────────────────────────────────────────────────────────────
 
 def _clone_and_checkout(repo_url: str, commit_sha: str, project_dir: str) -> None:
+    with _docker_lock:
+        already_done = _prepared_checkouts.get(project_dir) == commit_sha
+        if not os.path.exists(project_dir):
+            already_done = False
+
     if not os.path.exists(project_dir):
         logger.info("Cloning %s …", repo_url)
         subprocess.run(
@@ -48,7 +55,7 @@ def _clone_and_checkout(repo_url: str, commit_sha: str, project_dir: str) -> Non
             check=True, capture_output=True,
         )
 
-    if _prepared_checkouts.get(project_dir) == commit_sha:
+    if already_done:
         return
 
     sha_missing = subprocess.run(
@@ -70,15 +77,17 @@ def _clone_and_checkout(repo_url: str, commit_sha: str, project_dir: str) -> Non
     subprocess.run(["git", "checkout", "-f", commit_sha],
                    cwd=project_dir, check=True, capture_output=True)
     subprocess.run(["git", "clean", "-fdx"], cwd=project_dir, capture_output=True)
-    _prepared_checkouts[project_dir] = commit_sha
+    with _docker_lock:
+        _prepared_checkouts[project_dir] = commit_sha
 
 
 # ── Image build ────────────────────────────────────────────────────────────
 
 def _build_project_image(project_name: str, project_dir: str) -> str:
     tag = _image_tag(project_name)
-    if tag in _built_images:
-        return tag
+    with _docker_lock:
+        if tag in _built_images:
+            return tag
 
     logger.info("Building Docker image %s …", tag)
     dockerfile_content = """\
@@ -107,7 +116,8 @@ RUN pip install pytest-randomly
             raise RuntimeError(
                 f"Docker build failed for {project_name}:\n{result.stderr}\n{result.stdout}"
             )
-        _built_images.add(tag)
+        with _docker_lock:
+            _built_images.add(tag)
         logger.info("Image %s built.", tag)
     finally:
         if os.path.exists(dockerfile_path):
@@ -119,8 +129,9 @@ RUN pip install pytest-randomly
 
 def _ensure_repo_container(image_tag: str, project_name: str, commit_sha: str) -> str:
     container_name = _repo_container_name(project_name, commit_sha)
-    if container_name in _active_repo_containers:
-        return container_name
+    with _docker_lock:
+        if container_name in _active_repo_containers:
+            return container_name
 
     subprocess.run(["docker", "rm", "-f", container_name], capture_output=True, check=False)
     result = subprocess.run(
@@ -129,7 +140,8 @@ def _ensure_repo_container(image_tag: str, project_name: str, commit_sha: str) -
     )
     if result.returncode != 0:
         raise RuntimeError(f"Failed to start container for {project_name}:\n{result.stderr}")
-    _active_repo_containers[container_name] = container_name
+    with _docker_lock:
+        _active_repo_containers[container_name] = container_name
     logger.info("Started container %s for %s @ %s.", container_name, project_name, commit_sha)
     return container_name
 
@@ -155,7 +167,8 @@ def cleanup_project_container(project_name: str, sha: str) -> None:
     result = subprocess.run(
         ["docker", "rm", "-f", container_name], capture_output=True, check=False
     )
-    _active_repo_containers.pop(container_name, None)
+    with _docker_lock:
+        _active_repo_containers.pop(container_name, None)
     if result.returncode == 0:
         logger.info("Removed container %s.", container_name)
     else:

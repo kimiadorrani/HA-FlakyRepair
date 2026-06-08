@@ -232,7 +232,21 @@ START → detection_agent → (reproduced?) → repair_agent → END
 
 # Include tests not marked as reproduced in the dataset
 .venv/bin/python -m src.main --include-not-reproduced
+
+# Run 4 projects in parallel (each project's tests still run sequentially within it)
+.venv/bin/python -m src.main --workers 4
+
+# Full dataset run — detection only, 4 parallel workers
+.venv/bin/python -m src.main --workers 4 --no-repair
 ```
+
+#### Parallel execution and resumability
+
+`--workers N` groups tests by project and runs N project-groups concurrently. Tests within a project always run sequentially so they share one Docker container without conflict.
+
+The pipeline is **resumable**: if a run is interrupted (Ctrl-C, machine restart, or an out-of-funds / rate-limit error), just re-run the same command. Already-recorded `(project, test)` pairs are skipped automatically and the new results are appended to the same session directory.
+
+If the API returns a quota or billing error the pipeline detects it, logs a clear message, finishes the current test, and exits cleanly — no partial writes are lost.
 
 #### Run Repair on Existing Detection Results
 
@@ -298,7 +312,8 @@ results/
 |---|---|---|
 | `--project NAME [...]` | all | Filter to one or more projects |
 | `--category CAT` | all | Filter by flaky type (NIO, NOD, OD-Vic, OD-Brit) |
-| `--limit N` | none | Stop after N projects |
+| `--limit N` | none | Stop after N tests |
+| `--workers N` | `1` | Number of parallel project workers |
 | `--detection-model KEY` | `minimax` | Model for the Detection Agent |
 | `--repair-model KEY` | `minimax` | Model for the Repair Agent |
 | `--no-repair` | off | Run detection only |

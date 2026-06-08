@@ -28,6 +28,9 @@ import logging
 import sys
 import argparse
 import random
+import threading
+from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from dotenv import load_dotenv
 
@@ -173,12 +176,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--shuffle", action="store_true", default=False,
                         help="Shuffle the matching tests randomly before applying limit")
     parser.add_argument(
-        "--detection-model", default="minimax", metavar="MODEL_KEY",
-        help=f"Model key for the Detection Agent. Available: {list_models()} (default: minimax)",
+        "--detection-model", default="fireworks", metavar="MODEL_KEY",
+        help=f"Model key for the Detection Agent. Available: {list_models()} (default: fireworks)",
     )
     parser.add_argument(
-        "--repair-model", default="minimax", metavar="MODEL_KEY",
-        help=f"Model key for the Repair Agent. Available: {list_models()} (default: minimax)",
+        "--repair-model", default="fireworks", metavar="MODEL_KEY",
+        help=f"Model key for the Repair Agent. Available: {list_models()} (default: fireworks)",
     )
     parser.add_argument(
         "--no-repair", action="store_true", default=False,
@@ -187,6 +190,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--from-detection", metavar="SESSION_DIR", default=None,
         help="Skip detection; run repair on reproduced tests from a previous session directory",
+    )
+    parser.add_argument(
+        "--workers", "-w", type=int, default=1, metavar="N",
+        help="Number of parallel project workers (default: 1). Each worker runs one project's tests sequentially.",
     )
     return parser.parse_args()
 
@@ -345,6 +352,116 @@ def run_repair_from_detection(args: argparse.Namespace) -> None:
     logger.info("Done. Repair results saved to: %s/repair/", result_logger.session_dir)
 
 
+def _is_fatal_api_error(exc: Exception) -> bool:
+    """Return True for errors that indicate we should stop (out of funds, hard auth failure)."""
+    msg = str(exc).lower()
+    fatal_signals = [
+        "insufficient_quota", "out of funds", "you have run out",
+        "payment required", "exceeded your current quota",
+        "billing", "402", "account balance",
+    ]
+    return any(s in msg for s in fatal_signals)
+
+
+def _build_initial_state(test_info: dict, result_logger: ResultLogger,
+                         detection_model: str, repair_model: str) -> dict:
+    return {
+        "session_id":             result_logger.session_id,
+        "detection_model":        detection_model,
+        "repair_model":           repair_model,
+        "dataset":                "IDoFT",
+        "language":               "python",
+        "build_system":           "pytest",
+        "project_url":            test_info["project_url"],
+        "sha_detected":           test_info["sha_detected"],
+        "module_path":            ".",
+        "test_name":              test_info["test_name"],
+        "category":               [test_info["category"]],
+        "passing_log":            None,
+        "failing_log":            None,
+        "is_flakiness_reproduced": False,
+        "error_message":          None,
+        "pass_count":             0,
+        "fail_count":             0,
+        "outcome_profile":        None,
+        "execution_profiles":     [],
+        "flaky_type":             None,
+        "root_cause_analysis":    None,
+        "agent_trace":            [],
+        "token_usage":            {},
+        "pipeline_trace":         [],
+        "patch":                  None,
+        "patch_target":           None,
+        "files_modified":         [],
+        "fix_summary":            None,
+        "is_fixed":               False,
+        "fix_attempts":           0,
+        "repair_error":           None,
+        "trajectory":             [],
+    }
+
+
+def _run_project_tests(
+    project_name: str,
+    project_tests: list[dict],
+    configurable: dict,
+    result_logger: ResultLogger,
+    stop_event: threading.Event,
+    total_tests: int,
+    counter: list,          # [current_index] shared counter, protected by counter_lock
+    counter_lock: threading.Lock,
+) -> None:
+    """Run all tests for one project sequentially. Called from worker threads."""
+    app = build_graph()  # each thread gets its own compiled graph (avoids shared mutable state)
+
+    for test_info in project_tests:
+        if stop_event.is_set():
+            logger.info("Stop signal received — skipping remaining tests for %s", project_name)
+            break
+
+        with counter_lock:
+            counter[0] += 1
+            idx = counter[0]
+
+        logger.info("[%d/%d] %s :: %s", idx, total_tests, project_name, test_info["test_name"])
+
+        initial_state = _build_initial_state(
+            test_info, result_logger,
+            configurable["detection_model"], configurable["repair_model"],
+        )
+
+        test_invoke_config = {
+            "configurable": configurable,
+            "run_name": test_info["test_name"],
+            "metadata": {
+                "session_id": f"{project_name}_{result_logger.session_id}",
+            },
+        }
+
+        try:
+            final_state = app.invoke(initial_state, config=test_invoke_config)
+        except Exception as e:
+            if _is_fatal_api_error(e):
+                logger.error(
+                    "Fatal API error (out of funds / quota exceeded) on %s — stopping all workers.\n%s",
+                    test_info["test_name"], e,
+                )
+                stop_event.set()
+                initial_state["error_message"] = f"Fatal API error: {e}"
+                result_logger.log_result(project_name, initial_state)
+                break
+            logger.error("Pipeline crashed for %s: %s", test_info["test_name"], e)
+            initial_state["error_message"] = f"Pipeline crash: {e}"
+            final_state = initial_state
+
+        result_logger.log_result(project_name, final_state)
+        logger.info(
+            "→ reproduced=%s | type=%s",
+            final_state.get("is_flakiness_reproduced"),
+            final_state.get("flaky_type"),
+        )
+
+
 def run_detection_pipeline(args: argparse.Namespace | None = None):
     if args is None:
         args = parse_args()
@@ -374,88 +491,56 @@ def run_detection_pipeline(args: argparse.Namespace | None = None):
         )
         return
 
-    logger.info("Running %d test(s).", len(tests))
+    workers = getattr(args, "workers", 1)
+    logger.info("Running %d test(s) across %d worker(s).", len(tests), workers)
 
-    app = build_graph()
     result_logger = ResultLogger()
 
-    # LangGraph configurable parameters — passed to every node via invoke config
-    invoke_config = {
-        "configurable": {
-            "detection_model": args.detection_model,
-            "repair_model":    args.repair_model,
-            "skip_repair":     args.no_repair,
-        }
+    # Group tests by project so each worker owns one project's Docker container
+    by_project: dict[str, list[dict]] = defaultdict(list)
+    for t in tests:
+        by_project[t["project_name"]].append(t)
+
+    configurable = {
+        "detection_model": args.detection_model,
+        "repair_model":    args.repair_model,
+        "skip_repair":     args.no_repair,
     }
 
-    for i, test_info in enumerate(tests, 1):
-        logger.info("[%d/%d] %s :: %s", i, len(tests), test_info["project_name"], test_info["test_name"])
+    stop_event = threading.Event()
+    counter = [0]
+    counter_lock = threading.Lock()
 
-        initial_state = {
-            "session_id":             result_logger.session_id,
-            "detection_model":        args.detection_model,
-            "repair_model":           args.repair_model,
-            "dataset":                "IDoFT",
-            "language":               "python",
-            "build_system":           "pytest",
-            "project_url":            test_info["project_url"],
-            "sha_detected":           test_info["sha_detected"],
-            "module_path":            ".",
-            "test_name":              test_info["test_name"],
-            "category":               [test_info["category"]],
-            "passing_log":            None,
-            "failing_log":            None,
-            "is_flakiness_reproduced": False,
-            "error_message":          None,
-            "pass_count":             0,
-            "fail_count":             0,
-            "outcome_profile":        None,
-            "execution_profiles":     [],
-            "flaky_type":             None,
-            "root_cause_analysis":    None,
-            "agent_trace":            [],
-            "token_usage":            {},
-            "pipeline_trace":         [],
-            "patch":                  None,
-            "patch_target":           None,
-            "files_modified":         [],
-            "fix_summary":            None,
-            "is_fixed":               False,
-            "fix_attempts":           0,
-            "repair_error":           None,
-            "trajectory":             [],
-        }
-
-        # For LangSmith: dynamically create a new project folder per repo per run
-        os.environ["LANGCHAIN_PROJECT"] = f"{test_info['project_name']}_{result_logger.session_id}"
-        
-        # For Langfuse: "Projects" are tied to API keys and can't be created dynamically.
-        # Instead, Langfuse groups traces into unlimited "Sessions" based on this metadata.
-        test_invoke_config = {
-            **invoke_config,
-            "run_name": test_info["test_name"],
-            "metadata": {
-                **invoke_config.get("metadata", {}),
-                "session_id": f"{test_info['project_name']}_{result_logger.session_id}",
+    if workers == 1:
+        # Single-threaded fast path — no executor overhead
+        for project_name, project_tests in by_project.items():
+            if stop_event.is_set():
+                break
+            _run_project_tests(
+                project_name, project_tests, configurable,
+                result_logger, stop_event, len(tests), counter, counter_lock,
+            )
+    else:
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = {
+                executor.submit(
+                    _run_project_tests,
+                    project_name, project_tests, configurable,
+                    result_logger, stop_event, len(tests), counter, counter_lock,
+                ): project_name
+                for project_name, project_tests in by_project.items()
             }
-        }
+            for future in as_completed(futures):
+                project_name = futures[future]
+                try:
+                    future.result()
+                except Exception as e:
+                    logger.error("Worker for %s raised unexpected error: %s", project_name, e)
 
-        # Force the Langchain root trace name to be the test name instead of "LangGraph"
-        app.name = test_info["test_name"]
-
-        try:
-            final_state = app.invoke(initial_state, config=test_invoke_config)
-        except Exception as e:
-            logger.error("Pipeline crashed for %s: %s", test_info["test_name"], e)
-            initial_state["error_message"] = f"Pipeline crash: {e}"
-            final_state = initial_state
-
-        result_logger.log_result(test_info["project_name"], final_state)
-
-        logger.info(
-            "→ reproduced=%s | type=%s",
-            final_state.get("is_flakiness_reproduced"),
-            final_state.get("flaky_type"),
+    if stop_event.is_set():
+        logger.warning(
+            "Run stopped early due to fatal API error. "
+            "Results saved so far — re-run to resume (already-recorded tests are skipped automatically)."
         )
 
     result_logger.write_summary()

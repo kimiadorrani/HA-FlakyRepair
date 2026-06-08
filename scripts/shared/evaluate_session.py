@@ -190,6 +190,22 @@ def compute_detection_metrics(records: list[dict]) -> dict[str, Any]:
 
     accuracy = correct / len(pairs) if pairs else 0.0
 
+    # Per-class reproduction rates (over all records, not just reproduced)
+    repro_by_class: dict[str, dict[str, int]] = defaultdict(lambda: {"total": 0, "reproduced": 0})
+    for r in records:
+        cls = _norm_category(r.get("category"))
+        repro_by_class[cls]["total"] += 1
+        if r.get("is_flakiness_reproduced"):
+            repro_by_class[cls]["reproduced"] += 1
+    reproduction_by_class = {
+        cls: {
+            "total":      v["total"],
+            "reproduced": v["reproduced"],
+            "rate":       round(v["reproduced"] / v["total"], 4) if v["total"] else 0.0,
+        }
+        for cls, v in repro_by_class.items()
+    }
+
     # Token / timing aggregates
     in_toks  = [_get_token_usage(r).get("input_tokens",  0) for r in records]
     out_toks = [_get_token_usage(r).get("output_tokens", 0) for r in records]
@@ -208,9 +224,10 @@ def compute_detection_metrics(records: list[dict]) -> dict[str, Any]:
         "reproduced":         len(reproduced),
         "not_reproduced":     len(not_reproduced),
         "reproduction_rate":  round(len(reproduced) / total, 4) if total else 0.0,
-        "accuracy":           round(accuracy, 4),
-        "correct":            correct,
-        "per_class":          per_class,
+        "accuracy":               round(accuracy, 4),
+        "correct":                correct,
+        "reproduction_by_class":  reproduction_by_class,
+        "per_class":              per_class,
         "confusion_matrix":   {k: dict(v) for k, v in cm.items()},
         "token_usage": {
             "avg_input_tokens":  _avg(in_toks),
@@ -354,6 +371,18 @@ def _print_detection(det: dict, session_id: str) -> None:
           f"({_pct(det['reproduction_rate'])})")
     print(f"  Accuracy      : {_pct(det['accuracy'])}  "
           f"({det['correct']} / {det['reproduced']} reproduced correct)")
+
+    rbc = det.get("reproduction_by_class", {})
+    if rbc:
+        print()
+        print(f"  {'Class':<10}  {'Reproduced':>10}  {'Total':>7}  {'Rate':>7}")
+        print(f"  {'-'*10}  {'-'*10}  {'-'*7}  {'-'*7}")
+        for cls in ["NIO", "NOD", "OD-Vic", "OD-Brit", "OD"]:
+            if cls not in rbc:
+                continue
+            info = rbc[cls]
+            print(f"  {cls:<10}  {info['reproduced']:>10}  {info['total']:>7}  "
+                  f"{_pct(info['rate']):>7}")
 
     print()
     print(f"  {'Class':<10}  {'Support':>7}  {'Prec':>6}  {'Recall':>6}  {'F1':>6}")

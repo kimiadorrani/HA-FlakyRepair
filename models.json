@@ -1,5 +1,16 @@
 {
   "models": {
+    "fireworks": {
+      "name": "accounts/fireworks/models/deepseek-v4-flash",
+      "provider": "openai-compat",
+      "base_url": "https://api.fireworks.ai/inference/v1",
+      "api_key_env": "FIREWORKS_API_KEY",
+      "temperature": 1.0,
+      "max_tokens": 32768,
+      "extra": {
+        "reasoning_effort": "high"
+      }
+    },
     "minimax": {
       "name": "MiniMax-M2.7",
       "provider": "openai-compat",

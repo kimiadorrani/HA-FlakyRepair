@@ -19,6 +19,7 @@ Directory layout:
 import json
 import logging
 import os
+import threading
 from datetime import datetime
 from typing import Any
 
@@ -85,6 +86,7 @@ class ResultLogger:
         os.makedirs(self.session_dir, exist_ok=True)
 
         self._detection_eval = DetectionEvaluator()
+        self._lock = threading.Lock()
 
         self._summary: dict[str, Any] = {
             "session_id":     session_id,
@@ -154,23 +156,24 @@ class ResultLogger:
             state.get("test_name") or "", detection_spans,
         )
 
-        # summary counters
-        self._summary["total_tests"] += 1
-        if state.get("is_flakiness_reproduced"):
-            self._summary["reproduced"] += 1
-        elif state.get("error_message"):
-            self._summary["errors"] += 1
-        else:
-            self._summary["not_reproduced"] += 1
-
+        # summary counters (lock protects shared dict from concurrent threads)
         outcome_profile = state.get("outcome_profile") or "unknown"
-        self._summary["outcome_profiles"].setdefault(outcome_profile, 0)
-        self._summary["outcome_profiles"][outcome_profile] += 1
-
         usage = state.get("token_usage") or {}
-        self._update_token_usage(usage)
-        self._update_project_counters(project_name, state, usage, outcome_profile)
-        self._record_detection_eval(project_name, state)
+        with self._lock:
+            self._summary["total_tests"] += 1
+            if state.get("is_flakiness_reproduced"):
+                self._summary["reproduced"] += 1
+            elif state.get("error_message"):
+                self._summary["errors"] += 1
+            else:
+                self._summary["not_reproduced"] += 1
+
+            self._summary["outcome_profiles"].setdefault(outcome_profile, 0)
+            self._summary["outcome_profiles"][outcome_profile] += 1
+
+            self._update_token_usage(usage)
+            self._update_project_counters(project_name, state, usage, outcome_profile)
+            self._record_detection_eval(project_name, state)
 
     # ── repair ────────────────────────────────────────────────────────────
 
@@ -209,18 +212,19 @@ class ResultLogger:
             state.get("test_name") or "", repair_spans,
         )
 
-        # repair counters
-        if state.get("repair_error"):
-            self._summary["repair"]["errored"] += 1
-        else:
-            self._summary["repair"]["attempted"] += 1
-            if state.get("is_fixed"):
-                self._summary["repair"]["fixed"] += 1
-            else:
-                self._summary["repair"]["not_fixed"] += 1
-
+        # repair counters (lock protects shared dict from concurrent threads)
         usage = state.get("token_usage") or {}
-        self._update_token_usage(usage)
+        with self._lock:
+            if state.get("repair_error"):
+                self._summary["repair"]["errored"] += 1
+            else:
+                self._summary["repair"]["attempted"] += 1
+                if state.get("is_fixed"):
+                    self._summary["repair"]["fixed"] += 1
+                else:
+                    self._summary["repair"]["not_fixed"] += 1
+
+            self._update_token_usage(usage)
 
     # ── combined (detection + repair in one graph call) ───────────────────
 
