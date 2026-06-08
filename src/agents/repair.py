@@ -24,6 +24,7 @@ from src.tools.repair_tools import (
 )
 from src.tools.docker_infra import cleanup_project_container, _repo_container_name
 from src.tracing.agent_trace import PipelineTrace, TraceCallback
+from src.utils.retry import invoke_with_retry
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +150,9 @@ def repair_agent_node(state: RepairState, config: RunnableConfig | None = None) 
 
             try:
                 with ThreadPoolExecutor(max_workers=1) as executor:
-                    future = executor.submit(agent.invoke, invoke_kwargs, invoke_config)
+                    future = executor.submit(
+                        invoke_with_retry, agent, invoke_kwargs, invoke_config
+                    )
                     result = future.result(timeout=REPAIR_TIMEOUT_SECONDS)
                 final_content = result["messages"][-1].content
             except FutureTimeoutError:

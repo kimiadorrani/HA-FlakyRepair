@@ -29,6 +29,7 @@ from src.state import RepairState
 from src.tools.detection_tools import make_detection_tools
 from src.tools.docker_infra import cleanup_project_container
 from src.tracing.agent_trace import PipelineTrace, TraceCallback
+from src.utils.retry import invoke_with_retry
 
 logger = logging.getLogger(__name__)
 
@@ -147,7 +148,8 @@ def detection_agent_node(state: RepairState, config: RunnableConfig | None = Non
         with trace.start_span("detection", model=model_cfg.name) as span:
             callback = TraceCallback(span)
             try:
-                result = agent.invoke(
+                result = invoke_with_retry(
+                    agent,
                     {
                         "messages": [
                             SystemMessage(content=_SYSTEM_PROMPT),
