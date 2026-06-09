@@ -1,5 +1,16 @@
 {
   "models": {
+    "gpt-oss": {
+      "name": "accounts/fireworks/models/gpt-oss-120b",
+      "provider": "openai-compat",
+      "base_url": "https://api.fireworks.ai/inference/v1",
+      "api_key_env": "FIREWORKS_API_KEY",
+      "temperature": 0.7,
+      "max_tokens": 32768,
+      "extra": {
+        "max_retries": 3
+      }
+    },
     "fireworks": {
       "name": "accounts/fireworks/models/deepseek-v4-flash",
       "provider": "openai-compat",

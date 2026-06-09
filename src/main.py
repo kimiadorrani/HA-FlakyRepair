@@ -176,12 +176,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--shuffle", action="store_true", default=False,
                         help="Shuffle the matching tests randomly before applying limit")
     parser.add_argument(
-        "--detection-model", default="fireworks", metavar="MODEL_KEY",
-        help=f"Model key for the Detection Agent. Available: {list_models()} (default: fireworks)",
+        "--detection-model", default="gpt-oss", metavar="MODEL_KEY",
+        help=f"Model key for the Detection Agent. Available: {list_models()} (default: gpt-oss)",
     )
     parser.add_argument(
-        "--repair-model", default="fireworks", metavar="MODEL_KEY",
-        help=f"Model key for the Repair Agent. Available: {list_models()} (default: fireworks)",
+        "--repair-model", default="gpt-oss", metavar="MODEL_KEY",
+        help=f"Model key for the Repair Agent. Available: {list_models()} (default: gpt-oss)",
     )
     parser.add_argument(
         "--no-repair", action="store_true", default=False,
