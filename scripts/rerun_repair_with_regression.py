@@ -177,7 +177,8 @@ def _summarize(model: str, results: list) -> dict:
         "regressions": len(regs),
         "regression_rate": round(len(regs) / len(checked), 4) if checked else None,
         "skipped": {s: sum(1 for r in results if r["status"] == s)
-                    for s in ("setup_failed", "no_baseline", "repair_timeout", "no_post")},
+                    for s in ("setup_failed", "no_baseline", "repair_timeout",
+                              "repair_error", "no_post", "no_patch")},
         "results": results,
     }
 
@@ -280,6 +281,10 @@ def run_model(model: str, session_dir: str, url_map: dict, args) -> dict:
             except FutureTimeoutError:
                 rec["status"] = "repair_timeout"; add(rec)
                 print(f"  [repair-timeout] {model} {proj}::{test}"); return
+            except Exception as e:
+                # A model/API error must not crash the whole run — record and move on.
+                rec["status"] = "repair_error"; rec["error"] = str(e)[:200]; add(rec)
+                print(f"  [repair-error] {model} {proj}::{test} ({str(e)[:80]})"); return
             finally:
                 # wait=False so a hung LLM call (no server response) can NEVER wedge
                 # this worker — the abandoned thread dies with the process.
@@ -303,6 +308,14 @@ def run_model(model: str, session_dir: str, url_map: dict, args) -> dict:
             rec["patch_target"] = parsed.get("patch_target")
             rec["patch"] = capture_diff(container)          # FAITHFUL, from container
             rec["patch_reported"] = parsed.get("diff") or ""  # model's transcription, for comparison
+
+            # An empty faithful diff means there is no git-tracked change to attribute
+            # a regression to. With identical seeds, post should equal baseline, so any
+            # "broken" tests here are untracked side effects, not a real patch effect.
+            # Exclude these from the regression rate rather than count a false positive.
+            if not rec["patch"].strip():
+                rec["status"] = "no_patch"; add(rec)
+                print(f"  [no-patch] fixed={rec['is_fixed']} {model} {proj}::{test}"); return
 
             post = [r for r in (run_suite(container, directory, s, args.timeout) for s in seeds) if r]
             if not post:
