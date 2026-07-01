@@ -142,6 +142,7 @@ def make_repair_tools(
     test_name: str,
     execution_profiles: list[dict],
     flaky_type: str = "",
+    instance: str = "",
 ) -> Tuple[list, list, list]:
     """
     Set up Docker environment for the repair agent and return
@@ -157,7 +158,7 @@ def make_repair_tools(
 
     _clone_and_checkout(project_url, sha_detected, project_dir)
     image_tag      = _build_project_image(project_name, project_dir)
-    container_name = _ensure_repo_container(image_tag, project_name, sha_detected)
+    container_name = _ensure_repo_container(image_tag, project_name, sha_detected, instance)
 
     reproducing_profile = _find_reproducing_profile(execution_profiles)
     repair_log: list[dict]  = []

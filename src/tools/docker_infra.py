@@ -34,10 +34,17 @@ def _image_tag(project_name: str) -> str:
     return f"flaky-{project_name.lower()}:latest"
 
 
-def _repo_container_name(project_name: str, commit_sha: str) -> str:
+def _repo_container_name(project_name: str, commit_sha: str, instance: str = "") -> str:
     safe_project = re.sub(r"[^a-z0-9_.-]+", "-", project_name.lower())
     safe_sha = re.sub(r"[^a-z0-9]+", "", commit_sha.lower())[:12]
-    return f"flaky_repo_{safe_project}_{safe_sha or 'head'}"
+    name = f"flaky_repo_{safe_project}_{safe_sha or 'head'}"
+    # An optional instance suffix lets several containers run off the same
+    # (project, SHA) image in parallel — used when repairing sibling tests of one
+    # project concurrently. Default "" keeps the original single-container name.
+    if instance:
+        safe_inst = re.sub(r"[^a-z0-9]+", "", instance.lower())[:16]
+        name = f"{name}_{safe_inst}"
+    return name
 
 
 # ── Git helpers ────────────────────────────────────────────────────────────
@@ -127,8 +134,9 @@ RUN pip install pytest-randomly
 
 # ── Container lifecycle ────────────────────────────────────────────────────
 
-def _ensure_repo_container(image_tag: str, project_name: str, commit_sha: str) -> str:
-    container_name = _repo_container_name(project_name, commit_sha)
+def _ensure_repo_container(image_tag: str, project_name: str, commit_sha: str,
+                           instance: str = "") -> str:
+    container_name = _repo_container_name(project_name, commit_sha, instance)
     with _docker_lock:
         if container_name in _active_repo_containers:
             return container_name
@@ -161,9 +169,9 @@ def reset_container_files(project_name: str, commit_sha: str) -> None:
         logger.warning("Could not reset container files: %s", result.stderr.decode()[:200])
 
 
-def cleanup_project_container(project_name: str, sha: str) -> None:
+def cleanup_project_container(project_name: str, sha: str, instance: str = "") -> None:
     """Remove the running container for this project+SHA. The image is kept for reuse."""
-    container_name = _repo_container_name(project_name, sha)
+    container_name = _repo_container_name(project_name, sha, instance)
     result = subprocess.run(
         ["docker", "rm", "-f", container_name], capture_output=True, check=False
     )

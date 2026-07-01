@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import csv
 import glob
+import itertools
 import json
 import os
 import sys
@@ -55,7 +56,10 @@ from src.agents.repair import (
     REPAIR_TIMEOUT_SECONDS,
 )
 from src.tools.repair_tools import make_repair_tools
-from src.tools.docker_infra import _repo_container_name, _docker_exec, cleanup_project_container
+from src.tools.docker_infra import (
+    WORKSPACE_DIR, _clone_and_checkout, _build_project_image,
+    _repo_container_name, _docker_exec, cleanup_project_container,
+)
 from scripts.regression_check import (
     load_url_map, MERGED_CSV, run_suite, stably_passing, _test_dir, _target_key,
 )
@@ -216,12 +220,27 @@ def run_model(model: str, session_dir: str, url_map: dict, args) -> dict:
     seeds = list(range(1, args.baseline_runs + 1))
     results = list(existing)
     results_lock = threading.Lock()
-    proj_locks: dict = {}
-    proj_guard = threading.Lock()
+    counter = itertools.count(1)
 
-    def proj_lock(p):
-        with proj_guard:
-            return proj_locks.setdefault(p, threading.Lock())
+    # Prime each (project, SHA) once: clone + build the image before any of its
+    # sibling tests start, so concurrent tests never race on the shared clone dir.
+    # After priming, each test runs in its OWN container off that image, so tests
+    # of the same project run in parallel too.
+    primed: set = set()
+    prime_locks: dict = {}
+    prime_guard = threading.Lock()
+
+    def prime(proj, sha, url):
+        key = (proj, sha)
+        with prime_guard:
+            lock = prime_locks.setdefault(key, threading.Lock())
+        with lock:
+            if key in primed:
+                return
+            project_dir = os.path.join(WORKSPACE_DIR, proj)
+            _clone_and_checkout(url, sha, project_dir)
+            _build_project_image(proj, project_dir)
+            primed.add(key)
 
     def add(rec):
         with results_lock:
@@ -231,71 +250,73 @@ def run_model(model: str, session_dir: str, url_map: dict, args) -> dict:
     def work(t):
         proj, sha, test = t["project"], t["sha_detected"], t["test_name"]
         directory = _test_dir(test)
+        inst = f"r{next(counter)}"                        # unique container per test
         rec = {"project": proj, "test_name": test, "flaky_type": t["flaky_type"]}
-        with proj_lock(proj):
+        try:
+            prime(proj, sha, t["project_url"])
+            tools, repair_log, last_verified = make_repair_tools(
+                t["project_url"], sha, test, t["execution_profiles"], t["flaky_type"],
+                instance=inst)
+            container = _repo_container_name(proj, sha, inst)
+        except Exception as e:
+            rec["status"] = "setup_failed"; rec["error"] = str(e)[:200]
+            add(rec); print(f"  [setup-fail] {model} {proj}::{test}"); return
+        try:
+            base = [r for r in (run_suite(container, directory, s, args.timeout) for s in seeds) if r]
+            stable = stably_passing(base) if base else None
+            if not stable:
+                rec["status"] = "no_baseline"; add(rec)
+                print(f"  [no-baseline] {model} {proj}::{test}"); return
+
+            llm = model_cfg.make_llm()
+            agent = create_react_agent(llm, tools)
+            kwargs = {"messages": [SystemMessage(content=_SYSTEM_PROMPT),
+                                   HumanMessage(content=build_prompt(t))]}
             try:
-                tools, repair_log, last_verified = make_repair_tools(
-                    t["project_url"], sha, test, t["execution_profiles"], t["flaky_type"])
-                container = _repo_container_name(proj, sha)
-            except Exception as e:
-                rec["status"] = "setup_failed"; rec["error"] = str(e)[:200]
-                add(rec); print(f"  [setup-fail] {model} {proj}::{test}"); return
-            try:
-                base = [r for r in (run_suite(container, directory, s, args.timeout) for s in seeds) if r]
-                stable = stably_passing(base) if base else None
-                if not stable:
-                    rec["status"] = "no_baseline"; add(rec)
-                    print(f"  [no-baseline] {model} {proj}::{test}"); return
+                with ThreadPoolExecutor(max_workers=1) as ex:
+                    fut = ex.submit(agent.invoke, kwargs, {"recursion_limit": 60})
+                    res = fut.result(timeout=REPAIR_TIMEOUT_SECONDS)
+                final_content = res["messages"][-1].content
+            except FutureTimeoutError:
+                rec["status"] = "repair_timeout"; add(rec)
+                print(f"  [repair-timeout] {model} {proj}::{test}"); return
 
-                llm = model_cfg.make_llm()
-                agent = create_react_agent(llm, tools)
-                kwargs = {"messages": [SystemMessage(content=_SYSTEM_PROMPT),
-                                       HumanMessage(content=build_prompt(t))]}
-                try:
-                    with ThreadPoolExecutor(max_workers=1) as ex:
-                        fut = ex.submit(agent.invoke, kwargs, {"recursion_limit": 60})
-                        res = fut.result(timeout=REPAIR_TIMEOUT_SECONDS)
-                    final_content = res["messages"][-1].content
-                except FutureTimeoutError:
-                    rec["status"] = "repair_timeout"; add(rec)
-                    print(f"  [repair-timeout] {model} {proj}::{test}"); return
+            parsed = _parse_repair_response(final_content)
+            # MiniMax XML fallback — same as the pipeline.
+            if (not parsed.get("files_modified") and "<invoke" in final_content
+                    and "write_file" in final_content):
+                fb = _apply_xml_fallback(final_content, test, container,
+                                         t["flaky_type"], t["execution_profiles"], repair_log)
+                if fb:
+                    parsed = fb
 
-                parsed = _parse_repair_response(final_content)
-                # MiniMax XML fallback — same as the pipeline.
-                if (not parsed.get("files_modified") and "<invoke" in final_content
-                        and "write_file" in final_content):
-                    fb = _apply_xml_fallback(final_content, test, container,
-                                             t["flaky_type"], t["execution_profiles"], repair_log)
-                    if fb:
-                        parsed = fb
+            is_fixed = parsed.get("is_fixed", False)
+            if last_verified:
+                is_fixed = last_verified[-1]
 
-                is_fixed = parsed.get("is_fixed", False)
-                if last_verified:
-                    is_fixed = last_verified[-1]
+            rec["is_fixed"] = bool(is_fixed)
+            rec["files_modified"] = parsed.get("files_modified", [])
+            rec["patch_target"] = parsed.get("patch_target")
+            rec["patch"] = capture_diff(container)          # FAITHFUL, from container
+            rec["patch_reported"] = parsed.get("diff") or ""  # model's transcription, for comparison
 
-                rec["is_fixed"] = bool(is_fixed)
-                rec["files_modified"] = parsed.get("files_modified", [])
-                rec["patch_target"] = parsed.get("patch_target")
-                rec["patch"] = capture_diff(container)          # FAITHFUL, from container
-                rec["patch_reported"] = parsed.get("diff") or ""  # model's transcription, for comparison
+            post = [r for r in (run_suite(container, directory, s, args.timeout) for s in seeds) if r]
+            if not post:
+                rec["status"] = "no_post"; add(rec)
+                print(f"  [no-post] {model} {proj}::{test}"); return
 
-                post = [r for r in (run_suite(container, directory, s, args.timeout) for s in seeds) if r]
-                if not post:
-                    rec["status"] = "no_post"; add(rec)
-                    print(f"  [no-post] {model} {proj}::{test}"); return
-
-                broken, removed = regressions_of(stable, post, test)
-                rec["status"] = "regression" if (broken or removed) else "clean"
-                rec["baseline_stable"] = len(stable)
-                rec["regressions_broken"] = broken
-                rec["regressions_removed"] = removed
-                tag = (f"REGRESSION broke={len(broken)} removed={len(removed)}"
-                       if (broken or removed) else "clean")
-                add(rec)
-                print(f"  [{tag}] fixed={rec['is_fixed']} patch={len(rec['patch'])}b "
-                      f"{model} {proj}::{test}")
-            finally:
-                cleanup_project_container(proj, sha)
+            broken, removed = regressions_of(stable, post, test)
+            rec["status"] = "regression" if (broken or removed) else "clean"
+            rec["baseline_stable"] = len(stable)
+            rec["regressions_broken"] = broken
+            rec["regressions_removed"] = removed
+            tag = (f"REGRESSION broke={len(broken)} removed={len(removed)}"
+                   if (broken or removed) else "clean")
+            add(rec)
+            print(f"  [{tag}] fixed={rec['is_fixed']} patch={len(rec['patch'])}b "
+                  f"{model} {proj}::{test}")
+        finally:
+            cleanup_project_container(proj, sha, inst)
 
     if todo:
         with ThreadPoolExecutor(max_workers=max(1, args.threads)) as pool:
