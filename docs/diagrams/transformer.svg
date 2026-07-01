@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 210" width="1120" height="210"
+     font-family="Helvetica,Arial,sans-serif">
+<defs>
+  <marker id="arr" markerWidth="9" markerHeight="6" refX="9" refY="3" orient="auto"><polygon points="0 0,9 3,0 6" fill="#555"/></marker>
+</defs>
+<rect x="0" y="0" width="1120" height="210" fill="white"/>
+
+<!-- Title -->
+<text x="560" y="28" font-size="15" font-weight="bold" fill="#1a1a1a" text-anchor="middle">The Transformer Architecture</text>
+
+<!-- x N bracket over one layer (self-attention .. second add & norm) -->
+<line x1="212" y1="74" x2="882" y2="74" stroke="#999" stroke-width="1.4"/>
+<line x1="212" y1="74" x2="212" y2="84" stroke="#999" stroke-width="1.4"/>
+<line x1="882" y1="74" x2="882" y2="84" stroke="#999" stroke-width="1.4"/>
+<text x="547" y="66" font-size="13" font-weight="bold" fill="#666" text-anchor="middle">&#215; N</text>
+
+<!-- arrows -->
+<g stroke="#555" stroke-width="2" marker-end="url(#arr)">
+  <line x1="182" y1="136" x2="208" y2="136"/>
+  <line x1="382" y1="136" x2="408" y2="136"/>
+  <line x1="532" y1="136" x2="558" y2="136"/>
+  <line x1="732" y1="136" x2="758" y2="136"/>
+  <line x1="882" y1="136" x2="908" y2="136"/>
+</g>
+
+<!-- Input embedding -->
+<rect x="32" y="100" width="150" height="72" rx="8" fill="#f0f0f0" stroke="#888" stroke-width="2"/>
+<text x="107" y="132" font-size="12.5" font-weight="bold" fill="#333" text-anchor="middle">Input embedding</text>
+<text x="107" y="149" font-size="10" fill="#555" text-anchor="middle">+ positional</text>
+<text x="107" y="162" font-size="10" fill="#555" text-anchor="middle">encoding</text>
+
+<!-- Multi-head self-attention -->
+<rect x="212" y="100" width="170" height="72" rx="8" fill="#cfe2f3" stroke="#4f81a7" stroke-width="2"/>
+<text x="297" y="132" font-size="12.5" font-weight="bold" fill="#1a4d6e" text-anchor="middle">Multi-head</text>
+<text x="297" y="148" font-size="12.5" font-weight="bold" fill="#1a4d6e" text-anchor="middle">self-attention</text>
+<text x="297" y="163" font-size="9.5" fill="#1a4d6e" text-anchor="middle">across all tokens</text>
+
+<!-- Add & Norm 1 -->
+<rect x="408" y="110" width="124" height="52" rx="8" fill="#d5e8d4" stroke="#82b366" stroke-width="2"/>
+<text x="470" y="140" font-size="11.5" font-weight="bold" fill="#274e13" text-anchor="middle">Add &amp; Norm</text>
+
+<!-- Feed-forward -->
+<rect x="558" y="100" width="174" height="72" rx="8" fill="#fff8e0" stroke="#bf9000" stroke-width="2"/>
+<text x="645" y="132" font-size="12.5" font-weight="bold" fill="#7d5800" text-anchor="middle">Feed-forward</text>
+<text x="645" y="148" font-size="12.5" font-weight="bold" fill="#7d5800" text-anchor="middle">network</text>
+<text x="645" y="163" font-size="9.5" fill="#7d5800" text-anchor="middle">per token</text>
+
+<!-- Add & Norm 2 -->
+<rect x="758" y="110" width="124" height="52" rx="8" fill="#d5e8d4" stroke="#82b366" stroke-width="2"/>
+<text x="820" y="140" font-size="11.5" font-weight="bold" fill="#274e13" text-anchor="middle">Add &amp; Norm</text>
+
+<!-- Output representations -->
+<rect x="908" y="100" width="180" height="72" rx="8" fill="#e1d5e7" stroke="#9673a6" stroke-width="2"/>
+<text x="998" y="132" font-size="12.5" font-weight="bold" fill="#5b3472" text-anchor="middle">Contextualised</text>
+<text x="998" y="148" font-size="12.5" font-weight="bold" fill="#5b3472" text-anchor="middle">representations</text>
+</svg>

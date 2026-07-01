@@ -64,13 +64,17 @@
 
 <!-- Memory → Repair (retry loop, path goes left then up into left side of Repair) -->
 <path d="M454,205 L420,205 L420,114 L443,114" fill="none" stroke="#3a8fa8" stroke-width="1.8" marker-end="url(#arr_teal)"/>
-<text x="396" y="168" font-size="9" fill="#3a8fa8" text-anchor="middle">retry</text>
-<text x="396" y="180" font-size="9" fill="#3a8fa8" text-anchor="middle">≤ 3 times</text>
+<text x="396" y="174" font-size="9" fill="#3a8fa8" text-anchor="middle">retry</text>
 
 <!-- Repair → Result Logger -->
 <line x1="588" y1="114" x2="664" y2="114" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
 
 <!-- Result Logger → END -->
 <line x1="813" y1="114" x2="864" y2="114" stroke="#9673a6" stroke-width="2" marker-end="url(#arr_purple)"/>
+
+<!-- Detection → END (flakiness not reproduced, repair skipped) -->
+<path d="M238,140 L238,262 L913,262 L913,142" fill="none" stroke="#888"
+      stroke-width="1.6" stroke-dasharray="6,3" marker-end="url(#arr)"/>
+<text x="705" y="256" font-size="9" fill="#777" text-anchor="middle">not reproduced (repair skipped)</text>
 
 </svg>
