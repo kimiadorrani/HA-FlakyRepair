@@ -272,14 +272,18 @@ def run_model(model: str, session_dir: str, url_map: dict, args) -> dict:
             agent = create_react_agent(llm, tools)
             kwargs = {"messages": [SystemMessage(content=_SYSTEM_PROMPT),
                                    HumanMessage(content=build_prompt(t))]}
+            ex = ThreadPoolExecutor(max_workers=1)
             try:
-                with ThreadPoolExecutor(max_workers=1) as ex:
-                    fut = ex.submit(agent.invoke, kwargs, {"recursion_limit": 60})
-                    res = fut.result(timeout=REPAIR_TIMEOUT_SECONDS)
+                fut = ex.submit(agent.invoke, kwargs, {"recursion_limit": 60})
+                res = fut.result(timeout=REPAIR_TIMEOUT_SECONDS)
                 final_content = res["messages"][-1].content
             except FutureTimeoutError:
                 rec["status"] = "repair_timeout"; add(rec)
                 print(f"  [repair-timeout] {model} {proj}::{test}"); return
+            finally:
+                # wait=False so a hung LLM call (no server response) can NEVER wedge
+                # this worker — the abandoned thread dies with the process.
+                ex.shutdown(wait=False)
 
             parsed = _parse_repair_response(final_content)
             # MiniMax XML fallback — same as the pipeline.
