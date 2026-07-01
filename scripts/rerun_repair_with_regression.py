@@ -357,3 +357,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+    # A repair that timed out (e.g. connection drop) leaves a leaked non-daemon
+    # thread blocked on the dead LLM call, which would keep the process alive
+    # after all work + result files are done. Force a clean exit.
+    os._exit(0)
