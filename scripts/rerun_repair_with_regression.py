@@ -95,15 +95,20 @@ def load_fixed(session_dir: str, url_map: dict) -> list[dict]:
     """
     det = _detection_index(session_dir)
     out = []
+    seen: set = set()   # a test with several fix attempts is logged more than once
     for path in sorted(glob.glob(os.path.join(session_dir, "repair", "*.json"))):
         rec = json.load(open(path, encoding="utf-8"))
         proj = rec.get("project")
         for t in rec.get("tests", []):
             if not t.get("is_fixed"):
                 continue
+            key = (proj, t.get("test_name"))
+            if key in seen:            # measure each distinct test exactly once
+                continue
             d = det.get((proj, t.get("test_name")))
             if not d:
                 continue
+            seen.add(key)
             url = d.get("project_url") or url_map.get(proj, "")
             sha = d.get("sha_detected") or t.get("sha_detected") or ""
             ftype = d.get("flaky_type") or t.get("flaky_type") or ""

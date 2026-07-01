@@ -59,12 +59,11 @@ class ModelConfig:
         extra = dict(self.extra)
         # `reasoning_effort` is a request-BODY parameter for OpenAI-compatible
         # endpoints (e.g. Fireworks/DeepSeek). Newer openai SDKs reject it as a
-        # top-level Completions.create() kwarg, so forward it via extra_body.
-        model_kwargs = dict(extra.pop("model_kwargs", {}))
+        # top-level Completions.create() kwarg, so forward it via extra_body — which
+        # ChatOpenAI requires as an EXPLICIT constructor arg (not inside model_kwargs).
+        extra_body = dict(extra.pop("extra_body", {}))
         if "reasoning_effort" in extra:
-            body = dict(model_kwargs.get("extra_body", {}))
-            body["reasoning_effort"] = extra.pop("reasoning_effort")
-            model_kwargs["extra_body"] = body
+            extra_body["reasoning_effort"] = extra.pop("reasoning_effort")
         kwargs: dict[str, Any] = dict(
             model=self.name,
             temperature=self.temperature,
@@ -72,8 +71,8 @@ class ModelConfig:
             api_key=api_key or None,
             **extra,
         )
-        if model_kwargs:
-            kwargs["model_kwargs"] = model_kwargs
+        if extra_body:
+            kwargs["extra_body"] = extra_body
         if self.base_url:
             kwargs["base_url"] = self.base_url
         return ChatOpenAI(**kwargs)
