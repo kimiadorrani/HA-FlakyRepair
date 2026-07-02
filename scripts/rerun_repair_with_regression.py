@@ -210,16 +210,21 @@ def run_model(model: str, session_dir: str, url_map: dict, args) -> dict:
 
     # Resume: keep prior rows, skip their (project, test).
     existing, done = [], set()
+    # Infra/billing failures are transient — drop them so a resume RETRIES them
+    # (and cleans the stale error rows out) rather than treating them as done.
+    RETRY = {"repair_error", "repair_timeout", "setup_failed"}
     if os.path.exists(out_path):
         try:
-            existing = json.load(open(out_path)).get("results", [])
+            loaded = json.load(open(out_path)).get("results", [])
+            existing = [r for r in loaded if r.get("status") not in RETRY]
             done = {(r.get("project"), r.get("test_name")) for r in existing}
         except Exception:
             existing, done = [], set()
     todo = [t for t in chosen if (t["project"], t["test_name"]) not in done]
 
     print(f"[{model}] fixed_available={len(all_fixed)} | selected={len(chosen)} "
-          f"| already_done={len(existing)} | to_run={len(todo)} | "
+          f"| kept_done={len(existing)} | to_run={len(todo)} "
+          f"(incl. retries of prior errors) | "
           f"baseline_runs={args.baseline_runs} | threads={args.threads}")
 
     model_cfg = get_model(model)
