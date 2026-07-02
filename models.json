@@ -24,12 +24,15 @@
       }
     },
     "minimax": {
-      "name": "MiniMax-M2.7",
+      "name": "accounts/fireworks/models/minimax-m2p7",
       "provider": "openai-compat",
-      "base_url": "https://api.minimax.io/v1",
-      "api_key_env": "MINIMAX_API_KEY",
+      "base_url": "https://api.fireworks.ai/inference/v1",
+      "api_key_env": "FIREWORKS_API_KEY",
       "temperature": 0.2,
-      "max_tokens": 32768
+      "max_tokens": 32768,
+      "extra": {
+        "max_retries": 3
+      }
     }
   }
 }
