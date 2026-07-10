@@ -95,8 +95,13 @@ def compute_accuracy(session_dir: Path, ground_truth: dict[tuple[str, str, str],
     unmatched: list[dict[str, str]] = []
     detailed_rows: list[dict[str, str | bool]] = []
 
-    for json_file in sorted(session_dir.glob("*.json")):
-        if json_file.name in {"summary.json", "accuracy.json"}:
+    # Per-test records live under detection/ in newer sessions; fall back to the
+    # session root for older flat sessions.
+    detection_dir = session_dir / "detection"
+    json_files = sorted(detection_dir.glob("*.json")) if detection_dir.is_dir() \
+        else sorted(session_dir.glob("*.json"))
+    for json_file in json_files:
+        if json_file.name in {"summary.json", "accuracy.json", "evaluation.json"}:
             continue
 
         with json_file.open(encoding="utf-8") as handle:

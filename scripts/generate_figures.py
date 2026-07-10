@@ -241,8 +241,6 @@ ax1.legend(loc="upper right", framealpha=0.85, fontsize=9)
 ax1.axhline(0, color="black", linewidth=0.6)
 ax1.spines["top"].set_visible(False)
 ax1.spines["right"].set_visible(False)
-ax1.text(-0.45, 103, "0 regressions across all models",
-         fontsize=8, color="#555555", style="italic")
 
 # ── Right panel: grouped bars — tokens and duration ─────────────────────────
 w2 = 0.32
@@ -287,3 +285,38 @@ fig.savefig(os.path.join(OUT, "repair_summary.pdf"), bbox_inches="tight")
 fig.savefig(os.path.join(OUT, "repair_summary.png"), bbox_inches="tight")
 plt.close(fig)
 print("Figure 4 saved: repair_summary")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Figure 5 — Pipeline funnel: how many tests survive each stage, per model
+# ─────────────────────────────────────────────────────────────────────────────
+stages   = ["Evaluation\nbase", "Reproduced", "Repair\nattempted", "Fixed"]
+pipeline = {
+    "MiniMax M2.7":      [539, 385, 383, 323],
+    "DeepSeek V4 Flash": [539, 263, 261, 236],
+    "GPT-OSS 120B":      [539, 382, 378, 302],
+}
+
+fig, ax = plt.subplots(figsize=(9, 5))
+x = np.arange(len(stages))
+width = 0.26
+for i, model in enumerate(MODELS):
+    vals = pipeline[model]
+    bars = ax.bar(x + (i - 1) * width, vals, width,
+                  label=model, color=COLORS[i], alpha=0.88,
+                  edgecolor="white", linewidth=0.6)
+    for b, v in zip(bars, vals):
+        ax.text(b.get_x() + b.get_width() / 2, v + 6, str(v),
+                ha="center", va="bottom", fontsize=8, color="#222222")
+
+ax.set_xticks(x)
+ax.set_xticklabels(stages)
+ax.set_ylabel("Number of tests")
+ax.set_ylim(0, 590)
+ax.legend(frameon=False, loc="upper right")
+ax.axhline(0, color="black", linewidth=0.6)
+fig.tight_layout()
+fig.savefig(os.path.join(OUT, "pipeline_funnel.pdf"), bbox_inches="tight")
+fig.savefig(os.path.join(OUT, "pipeline_funnel.png"), bbox_inches="tight")
+plt.close(fig)
+print("Figure 5 saved: pipeline_funnel")

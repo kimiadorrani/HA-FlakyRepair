@@ -49,8 +49,8 @@ Fix protocol:
 4. Call run_verification() — it runs multiple strategies suited to the flaky type.
    The fix is verified only when the returned JSON shows "verified": true.
    If "verified" is false, read the per-strategy details to understand what still fails.
-5. If still flaky, revise the fix and verify again (up to 3 total attempts).
-6. When done (verified or attempts exhausted), call get_diff() and produce output.
+5. If still flaky, revise the fix and verify again, iterating until it is verified.
+6. When done (verified, or no further progress can be made), call get_diff() and produce output.
 
 Fix principles:
 - Apply the smallest change that eliminates the root cause.
